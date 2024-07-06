@@ -1,0 +1,64 @@
+#! /bin/sh
+
+# Set up /opt/iains/<build>/gcc-build/{bin,scripts}
+
+scripts=`dirname $0`
+
+print_help()
+{
+  echo "`basename $0` [options]"
+  echo "options:"
+  echo " --prefix    : specify the prefix"
+  echo " --arch      : specify a different arch from the kernel"
+  echo " --force/-f  : continue on non-fatal error."
+  echo " --help/-h   : this output."
+}
+
+arch=
+prefix=
+goon=1
+while [ $goon -eq 1 -a $# -gt 0 ]
+do
+  case $1 in
+    --help | -h)
+      print_help
+      exit 0
+      ;;
+    --prefix)
+      prefix=$2
+      shift; shift
+      ;;
+    --arch)
+      arch=$2
+      shift; shift
+      if [ $arch = "arm64" ]; then
+        arch="aarch64"
+      fi
+      ;;
+    *)
+      goon=0
+      ;;
+  esac
+done
+
+. $scripts/build-utils
+
+build=`get_build_triple $arch`
+
+if [ "X$prefix" = "X" ]; then
+  prefix="/opt/iains/$build/gcc-build-tools"
+fi
+
+echo "Installing to : $prefix"
+
+script_list="gcc-bootstrap-and-test gcc-branch-rev gcc-save-test \
+gcc-update-test ramdisk"
+
+if [ ! -d $prefix/bin ]; then
+  echo "warning: no binary tools installed yet" >&2
+  mkdir -p $prefix/bin
+fi
+
+for s in $script_list; do
+  cp $scripts/$s $prefix/bin/$s
+done
