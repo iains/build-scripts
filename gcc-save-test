@@ -1,0 +1,302 @@
+#! /bin/sh
+
+# This assumes a configure with the target triple specified like
+# <arch>-apple-darwinNN
+
+# We can process:
+#  * Native bootstrap.
+#  * Rosetta bootstrap.
+#  * Cross-compilers with dummy/remote testing.
+
+# Allow pushing to a local db.
+# and default to this.
+
+gitpushurl='/repos/test-results.git'
+do_local=1
+do_bunsen=0
+jfdi=0
+tagid=
+
+while [ $# -gt 0 ]
+do
+  case $1 in
+    --bunsen)
+      gitpushurl='git+ssh://sourceware.org/git/bunsendb.git'
+      do_bunsen=1
+      do_local=0
+      ;;
+    --test)
+      gitpushurl='/repos/test-results.git'
+      do_local=1
+      do_bunsen=0
+      ;;
+    --tagid)
+       tagid=$2
+       shift
+       ;;
+    --force | -f)
+      jfdi=1
+      ;;
+    --help | -h)
+      echo "$0 --test     : send to local test repo (default)"
+      echo "$0 --bunsen   : send to bunsen (mutually exclusive with --test)"
+      echo "$0 --force/-f : re-send / force sending to a second repo"
+      echo "$0 --tagid    : specify the tag ID for this build"
+      exit 0
+      ;;
+  esac
+  shift
+done
+# Locate the source directory (we could also look in config.status or
+# config.log, I guess).
+
+if [[ -f "gcc/Makefile" && -f "Makefile" ]]; then
+srcdir=`grep VPATH= Makefile | sed -e 's,VPATH=,,'`
+else
+echo "This does not seem to be a GCC build directory"
+exit 1
+fi
+
+# Figure out some info for the tag and to locate the runtime builds.
+machine=`uname -m`
+target=`grep target= gcc/Makefile | head -1 | sed -e 's,target=,,'`
+host=`grep host= gcc/Makefile | head -1 | sed -e 's,host=,,'`
+arch=`echo $target | sed -e 's,-.*,,'`
+darwin=`echo $target | sed -e 's,.*-.*-,,' | sed -e 's,\.[0-9.]*,,'`
+
+rosetta=
+cross=false
+if test $host != $target; then
+cross=true
+else
+  # Look for Rosetta bootstraps on Arm64 and X86.
+  if test "X$arch" = "Xx86_64"; then
+    ver=`uname -v | grep -i arm64`
+    if test "X$ver" != "X"; then
+      rosetta='-rosetta'
+    fi
+  elif test "X$arch" = "Xpowerpc"; then
+    ver=`uname -v | grep -i I386`
+    if test "X$ver" != "X"; then
+      rosetta='-rosetta'
+    fi
+  fi
+fi
+
+# We need to check for $build tools capability on older OS.
+kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
+
+#kernname=`uname -s`
+#kernrev=`uname -r`
+#darwin=`echo $kernname$kernmaj | tr '[:upper:]' '[:lower:]'`
+
+#triple=`echo $arch-apple-$darwin`
+
+# Fall back to whatever git we can find in path.
+if [ -x /opt/iains/$build/gcc-7-5-toolchain/bin/git ];then
+  # We have a toolchain for this OS version.
+  tcgit=/opt/iains/$build/gcc-7-5-toolchain/bin/git
+elif [ -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ];then
+  # We can use the Darwin19 one, for now.
+  tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
+fi
+
+# Let the environment override the git to be used; fall back to whatever we
+# find in PATH if there's no toolchain version available.
+git=${GIT-${tcgit-git}}
+
+gv=`$git --version`
+if [ $? -ne 0 ];then
+ echo "cannot execute $git" >&2
+ exit 1
+fi
+echo "using git : $git [version $gv]"
+
+# Hopefully, we configured with --build=<arch>-apple-darwinNN, if not, then
+# we're not sure how to name the triple.
+
+if test -d "$target"; then :
+else
+echo "Not sure what the target name is, giving up."
+exit 1
+fi
+
+branch=`cd $srcdir && $git rev-parse --abbrev-ref HEAD`
+headsha=`cd $srcdir && $git rev-parse HEAD`
+
+revision=`cd $srcdir && $git describe --all --abbrev=12 --match \
+         'basepoints/gcc-[0-9]*' HEAD | \
+         sed -e 's,tags/,,' -e 's,basepoints/gcc-,r,' `
+
+branchrev=`echo $revision | sed -e 's,-g[0-9a-fA-F]*,,'`
+gccvers=`echo $branchrev | sed -e 's,-.*,,'`
+commit=`echo $branchrev | sed -e 's,r[0-9][0-9]*-,,'`
+
+branchname=`echo gcc-$gccvers`
+case $branch in
+  master) ;;
+  releases/gcc-*) ;;
+  *) branchname="$branch" ;;
+esac
+
+# Figure out the effective upstream; When we are on the main machine, then the
+# upstream is the GCC repo.  When we are on test boxes, and the upstream is
+# repos and the branch is master or releases/gcc-nn, then the effective
+# upstream is also the GCC repo.  Otherwise, it's a local repo and might have
+# unpublished patches.
+
+bunsenok=0
+srcrepo=`cd $srcdir && $git rev-parse --abbrev-ref $branch@{upstream} | sed -e s,/.*,, `
+if test $srcrepo = "upstream"; then
+  srcrepo='gcc.gnu.org/git/gcc.git'
+  bunsenok=1
+elif test $srcrepo = "repos"; then
+  case $branch in
+    releases/gcc-* | master)
+      srcrepo='gcc.gnu.org/git/gcc.git'
+      bunsenok=1
+      ;;
+    *)
+      srcrepo=`cd $srcdir && $git config --get remote.$srcrepo.url`
+      ;;
+  esac
+else
+  srcrepo=`cd $srcdir && $git config --get remote.$srcrepo.url`
+fi
+
+# We really want the build time not the reporting time .. but that might
+# be hard to arrange on some OS versions.
+build_date=`if [ -f build_date.txt ]; then cat build_date.txt; \
+            elif date -ur gcc/cc1plus '+%y%m%d-%H%M' 2>/dev/null; then :; \
+            else date -u '+%y%m%d-%H%M' 2>/dev/null; \
+            fi`
+stamp="$commit-$build_date"
+shorthost=`echo $host | sed -e 's,apple-,,'`
+if test X$tagid != X; then
+  tagname=`echo iains/$branchname/$tagid`
+else
+  if $cross; then
+    tagname=`echo iains/$branchname/$shorthost-X-$arch$rosetta-$darwin/$stamp`
+  else
+    tagname=`echo iains/$branchname/$arch$rosetta-$darwin/$stamp`
+  fi
+fi
+#echo $kernname $kernrev \($darwin\) triple=$triple target=$target
+#echo $srcdir $branch $branchrev $headsha 
+echo upstream=$srcrepo test_data_repo=$gitpushurl tag=$tagname 
+
+# Staging for our output.
+staging=`echo bunsen-$branchrev`
+if test -d $staging; then
+  if [[ -f $staging/results-sent && $jfdi -eq 0 ]]; then
+    echo "results already sent; --force/-f to repeat (at your risk)."
+    exit 0;
+  fi
+fi
+
+# If we are not really sure that the upstream is a public repo, then bail.
+if [[ $do_bunsen -ne 0 && $bunsenok -eq 0 && $jfdi -eq 0 ]]; then
+  echo "pushing to bunsen, but not sure if the upstream is GCC; --force/-f to override."
+  exit 0;
+fi
+
+rm -fr $staging
+mkdir $staging
+
+# some metadata
+
+echo $headsha > $staging/.bunsen.source.gitname
+echo $branch > $staging/.bunsen.source.gitbranch
+echo "gcc-$revision" > $staging/.bunsen.source.gitdescribe
+echo $srcrepo > $staging/.bunsen.source.gitrepo
+
+# Do the top level specially.
+if test -f "summ.txt"; then
+# This is how I name saved sum files
+if $cross; then
+sumfile=`echo summ-$shorthost-X-$arch-$darwin-$branchrev$rosetta.txt`
+else
+sumfile=`echo summ-$arch-$darwin-$branchrev$rosetta.txt`
+fi
+cp summ.txt "$staging/$sumfile"
+  # Save a local copy to send to testresults@
+  if [[ ! -f "/source/$sumfile" ]]; then
+    cp summ.txt "/source/$sumfile"
+  fi
+fi
+
+cp config.log $staging/
+
+# Carefully avoid finding all .log files, there are a bunch of irrelevant ones
+# when testing acats.
+
+# Find all the config.log
+
+# optional in-source builds
+extras=
+if test -d "gmp"; then
+ extras="gmp"
+fi
+if test -d "mpfr"; then
+ extras="$extras mpfr"
+fi
+if test -d "mpc"; then
+ extras="$extras mpc"
+fi
+if test -d "isl"; then
+ extras="$extras isl"
+fi
+if test -d "gettext"; then
+ extras="$extras gettext"
+fi
+if test -d "zlib"; then
+ extras="$extras zlib"
+fi
+
+# Find all the .sum files, checking what $build supports for cpio
+if test "x$kernmaj" = "x9"; then
+# Darwin < 10 does not support --quiet.
+quiet=
+else
+quiet='--quiet'
+fi
+
+res=`find gcc lib* $target/* c++tools fixincludes gnat* $extras -name config.log | cpio $quiet -pLd $staging/  >/dev/null`
+if test "X$res" != "X"; then
+  echo "failed to copy config.logs"
+  exit 1
+fi
+
+summfiles=`find . -name \*.sum`
+res=`for f in $summfiles; do echo $f; done | cpio $quiet -pLd $staging/  >/dev/null`
+if test "X$res" != "X"; then
+  echo "failed to copy .sum files"
+  exit 1
+fi
+
+# Find all the .log files, that have a corresponding .sum
+res=`for f in $summfiles; do echo $f; done | sed -e 's,sum,log,' | cpio $quiet -pLd $staging/  >/dev/null`
+if test "X$res" != "X"; then
+  echo "failed to copy .log files"
+  exit 1
+fi
+
+# .. and some other specials (relying on gcc/ being present now).
+cp $srcdir/gcc/REVISION $staging/gcc/
+
+# ==== now pack it up and send it.
+
+pushd "$staging" >/dev/null
+$git init -q
+$git add .
+$git commit -q -mupload
+$git tag "$tagname"
+$git remote add server "$gitpushurl"
+# Push the commit to the server
+$git push -q server "$tagname":"$tagname" 
+# Show the resulting commit & tag
+$git show-ref "$tagname"
+
+echo $stamp > results-sent
+popd >/dev/null
+

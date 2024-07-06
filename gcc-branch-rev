@@ -1,0 +1,72 @@
+#! /bin/sh
+
+# figure out the build machine.
+kernarch=`uname -m`
+kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
+kernname=`uname -s`
+kernrev=`uname -r`
+darwin=`echo $kernname$kernmaj | tr '[:upper:]' '[:lower:]'`
+hw64b=`sysctl -n hw.cpu64bit_capable`
+
+arch=$kernarch
+case $kernarch in
+  arm64)
+     arch="aarch64"
+     ;;
+  i386)
+     if [ $kernmaj -ge 10 -a $hw64b = 1 ];then
+       arch="x86_64"
+     else
+       arch="i686"
+     fi
+     ;;
+  *)
+     ;;
+esac
+
+build=`echo $arch-apple-$darwin`
+echo "build system is $build"
+
+# Find a usable git.
+if [ -x /opt/iains/$build/gcc-7-5-toolchain/bin/git ];then
+  # We have a toolchain for this OS version.
+  tcgit=/opt/iains/$build/gcc-7-5-toolchain/bin/git
+elif [ -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ];then
+  # We can use the Darwin19 one, for now.
+  tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
+fi
+
+# Let the environment override the git to be used; fall back to whatever we
+# find in PATH if there's no toolchain version available.
+git=${GIT-${tcgit-git}}
+
+gv=`$git --version`
+if [ $? -ne 0 ];then
+ echo "cannot execute $git" >&2
+ exit 1
+fi
+echo "using git : $git [version $gv]"
+
+#branch=`git name-rev --name-only HEAD || :`
+branch=`$git rev-parse --abbrev-ref HEAD`
+if [ $? -ne 0 ]; then
+  echo "Failed to find the branch name" >&2
+  exit 1
+fi
+
+revision=`$git describe --all --abbrev=12 --match \
+         'basepoints/gcc-[0-9]*' HEAD | \
+         sed -e 's,tags/,,' -e 's,basepoints/gcc-,r,'`
+if [ $? -ne 0 ]; then
+  echo "Failed to find the branch revision" >&2
+  exit 1
+fi
+
+rm -f LAST_UPDATED gcc/REVISION
+{
+    date
+    lastcommit=`TZ=UTC0 $git show --quiet --date='format-local:%a %d %b %Y %H:%M:%S UTC' --format="%cd"`
+    echo "$lastcommit (revision $revision)"
+} > LAST_UPDATED
+echo "[$branch revision $revision]" > gcc/REVISION
+echo `tail gcc/REVISION `

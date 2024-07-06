@@ -1,0 +1,464 @@
+#! /bin/sh
+
+scripts=`dirname $0`
+
+. $scripts/build-utils
+
+langlist="all"
+sysroot=
+prefix=
+hostshr=0
+force=0
+update=0
+extra_config=
+reponame=
+branchname=
+arch=
+
+print_help()
+{
+  echo "`basename $0` [options] [gcc-version [bootstrap]]"
+  echo "options:"
+  echo " --update/-u : update the source tree before starting (stop if unchanged)."
+  echo " --repo      : repository path (default /src-local/gcc-git-major)."
+  echo " --branch    : repository branch (default releases/gcc-major or master)."
+  echo " --blddir    : build directory (default /scratch/OS-ver[rosetta]/gcc-major)."
+  echo " --prefix    : specify prefix (default /opt/iains/<triple>/gcc-<base-ver>)."
+  echo " --langs     : specify comma-separated list of languages to build (default = all)."
+  echo " --sysroot   : specify sysroot (default depends on OS version)."
+  echo " --config    : supply extra configure parms (e.g. cpu, tune etc)."
+  echo " --arch      : specify a different arch from the kernel"
+  echo " --hostshr   : enable host shared on 32b hosts."
+  echo " --jobs/-j   : number of jobs for make and check."
+  echo " --force/-f  : continue on non-fatal error."
+  echo " --help/-h   : this output."
+}
+
+goon=1
+while [ $goon -eq 1 -a $# -gt 0 ]
+do
+  case $1 in
+    --help | -h)
+      print_help
+      exit 0
+      ;;
+    -u | --update)
+      update=1
+      shift
+      ;;
+    -j | --jobs)
+      num_jobs=$2
+      shift; shift
+      ;;
+    --repo)
+      reponame=$2
+      shift; shift
+      ;;
+    --branch)
+      branchname=$2
+      shift; shift
+      ;;
+    --langs)
+      langlist=$2
+      shift; shift
+      ;;
+    --sysroot)
+      sysroot=$2
+      shift; shift
+      ;;
+    --prefix)
+      prefix=$2
+      shift; shift
+      ;;
+    --config)
+      extra_config=$2
+      shift; shift
+      ;;
+    --arch)
+      arch=$2
+      shift; shift
+      if [ $arch = "arm64" ]; then
+        arch="aarch64"
+      fi
+      ;;
+    --hostshr)
+      hostshr=1
+      shift
+      ;;
+    --blddir)
+      blddir=$2
+      shift; shift
+      ;;
+    -f | --force)
+      force=1
+      shift
+      ;;
+    *)
+      goon=0
+      ;;
+  esac
+done
+
+# Two positional args .. 
+version=
+if [ $# -gt 0 ]; then
+  version=$1
+  shift
+else
+  version="master"
+fi
+
+cc=
+cxx=
+if [ $# -gt 0 ]; then
+  bootstrap=$1
+  shift
+  case $bootstrap in
+    gcc | g\+\+)
+      cc=gcc
+      cxx=g++
+      ;;
+    *-gcc | *-g\+\+)
+      b=`echo $bootstrap | sed -e s/-g..$//`
+      cc="$b-gcc"
+      cxx="$b-g++"
+      ;;
+    clang*)
+      cc="clang"
+      cxx="clang++"
+      ;;
+  esac
+fi
+
+karch=`uname -m`
+kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
+hw64b=`sysctl -n hw.cpu64bit_capable`
+
+build=`get_build_triple $arch`
+
+if [ "X$arch" = "X" ]; then
+  arch=`get_kernel_arch`
+fi
+
+is32b=0
+if [ $arch = "i686" -o $arch = "powerpc" ]; then
+  is32b=1
+fi
+
+# We will need to figure out if to add libphobos
+hasD=`echo $langlist | grep -o ',d' | sed -e s/,//`
+if [ X$hasD = "Xd" -o $langlist = "all" ];then
+  hasD=1
+else
+  hasD=0
+fi
+
+if [ "X$reponame" = "X" ]; then
+  if [ $version = "master" -o $version = "trunk" ]; then
+    reponame="/src-local/gcc-master"
+  else
+    reponame="/src-local/gcc-git-$version"
+  fi
+fi
+
+if [ ! -d $reponame ]; then
+  echo "GCC source repository '$reponame' not found" >&2
+  exit 1
+fi
+
+if [ ! -d $reponame/.git -a ! -f $reponame/.git ]; then
+  echo "'$reponame' does not seem to be a git repository" >&2
+  exit 1
+fi
+
+# Fall back to whatever git we can find in path.
+if [ -x /opt/iains/$build/gcc-7-5-toolchain/bin/git ];then
+  # We have a toolchain for this OS version.
+  tcgit=/opt/iains/$build/gcc-7-5-toolchain/bin/git
+elif [ -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ];then
+  # We can use the Darwin19 one, for now.
+  tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
+fi
+
+# Let the environment override the git to be used; fall back to whatever we
+# find in PATH if there's no toolchain version available.
+git=${GIT-${tcgit-git}}
+
+gv=`$git --version`
+if [ $? -ne 0 ];then
+ echo "cannot execute $git" >&2
+ exit 1
+fi
+echo "using git : $git [version $gv]"
+
+# See if we should do rNN-MMMM or branchname-MMM
+use_branchname=0
+if [ "X$branchname" = "X" ]; then
+  if [ $version = "master" -o $version = "trunk" ]; then
+    branchname="master"
+  else
+    branchname="releases/gcc-$version"
+  fi
+else
+  use_branchname=1
+fi
+
+# Now check on and update the sources.
+pushd $reponame >/dev/null
+
+branch=`$git rev-parse --abbrev-ref HEAD`
+if [ $branch != $branchname ]; then
+  echo "expected branch $branchname but $branch is checked out." >&2
+  exit 1
+fi
+
+# Do the update in the same way (mostly stolen from) gcc_update.
+if [ $update -eq 1 ]; then
+  $git diff --quiet --exit-code HEAD
+  if [ $? -ne 0 ]; then
+    echo "Attempting to update a dirty git tree!" >&2
+    echo "Commit or stash your changes first and retry." >&2
+    popd >/dev/null
+    exit 1
+  fi
+
+  current=`$git rev-parse --verify HEAD`
+
+  $git pull -q --ff-only
+  if [ $? -ne 0 ]; then
+    #(touch_files_reexec)
+    echo "git pull of full tree failed." >&2
+    popd >/dev/null
+    exit 1
+  fi
+
+  updated=`$git rev-parse --verify HEAD`
+  if [ $current = $updated -a $force -ne 1 ]; then
+    echo "no change to sources - stopping, --force to override." >&2
+    popd >/dev/null
+    exit 1
+  fi
+
+  revision=`$git describe --all --abbrev=12 --match \
+	   'basepoints/gcc-[0-9]*' @{u} | \
+	    sed -e 's,tags/,,' -e 's,basepoints/gcc-,r,'`
+  branchrev=`echo $revision | sed -e 's,-g[0-9a-fA-F]*,,'`
+  gccvers=`echo $branchrev | sed -e 's,-.*,,'`
+
+  # Use branchname-MMMM instead of rXX-MMMM (the latter can be confusing)
+  if [ $use_branchname -eq 1 ]; then
+    revision=`echo $revision | sed -e s,$gccvers,$branch,`
+  fi
+
+  rm -f LAST_UPDATED gcc/REVISION
+  {
+    date
+    lastcommit=`TZ=UTC0 $git show --quiet --date='format-local:%a %d %b %Y %H:%M:%S UTC' --format="%cd"`
+    echo "$lastcommit (revision $revision)"
+  } > LAST_UPDATED
+  echo "[$branch revision $revision]" > gcc/REVISION
+fi
+
+# Make sure that the checkout has timestamps as expected.
+contrib/gcc_update --touch
+if [ $? -ne 0 ];then
+ echo "updating checkout timestamps failed" >&2
+ popd
+ exit 1
+fi
+
+popd >/dev/null
+echo "`date -u \"+%y%m%d-%H%M : \"`current branch head : `tail $reponame/gcc/REVISION `"
+
+# Account for Rosetta bootstraps.
+if test "X$arch" = "Xx86_64"; then
+  ver=`uname -v | grep -i arm64`
+  if test "X$ver" != "X"; then
+    rosetta='-rosetta'
+  fi
+elif test "X$arch" = "Xpowerpc"; then
+  ver=`uname -v | grep -i I386`
+  if test "X$ver" != "X"; then
+    rosetta='-rosetta'
+  fi
+fi
+
+# If it's not specified, choose a default sysroot based on the OS version.
+defaultSDK="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+OSvers=10.0
+if [ $kernmaj -lt 20 ];then
+  t=`expr $kernmaj - 4`
+  OSvers="10.$t"
+else
+  t=`expr $kernmaj - 9`
+  OSvers="$t"
+fi
+
+# There are more specific ones still, but usually a link from this to them
+specificSDK="/Library/Developer/CommandLineTools/SDKs/MacOSX$OSvers.sdk"
+
+if [ X$sysroot = X ]; then
+  case $kernmaj in
+    # In principle, we could use an SDK here too, but some of the system
+    # tools do not work properly without the "unix command line devt"
+    # installation.
+    9 | 10 ) sysroot="/" ;;
+    *)
+      if [ -d $specificSDK ]; then
+        sysroot=$specificSDK
+      elif [ $kernmaj -lt 13 -a -f /usr/include/stdlib.h ]; then
+        sysroot="/"
+      elif [ -d $defaultSDK ]; then
+        sysroot=$defaultSDK
+      else
+        echo "cannot find a suitable SDK for sysroot." >&2
+        exit 1
+      fi
+      ;;
+  esac
+fi
+
+# If the user did not specify a bootstrap compiler, fall back to guessing that
+# we want to use GCC for the platform.
+if [ "X$cc" = "X" ]; then
+  cc="$build-gcc"
+  cxx="$build-g++"
+fi
+
+basever=`cat $reponame/gcc/BASE-VER | sed -e 's/\./-/g'`
+gccmaj=`echo $basever | sed -e 's/-.*//'`
+if [ "X$prefix" = "X" ]; then
+  prefix="/opt/iains/$build/gcc-$basever"
+fi
+
+# If we are building D and the OS version is 11 or less then we
+# need to add --enable-libphobos or we will fail at the end of 
+# stage 1.
+add_libphobos=
+if [ $hasD -eq 1 -a $kernmaj -lt 12 ]; then
+  add_libphobos="--enable-libphobos"
+fi
+
+if [ "X$blddir" = "X" ]; then
+  case $kernmaj in
+     9) b="/scratch/10-5-leo$rosetta";;
+    10) b="/scratch/10-6-sno$rosetta";;
+    11) b="/scratch/10-7-lion";;
+    12) b="/scratch/10-8-ml";;
+    13) b="/scratch/10-9-mav";;
+    14) b="/scratch/10-10-yos";;
+    15) b="/scratch/10-11-elcap";;
+    16) b="/scratch/10-12-sie";;
+    17) b="/scratch/10-13-his";;
+    18) b="/scratch/10-14-moj";;
+    19) b="/scratch/10-15-cat";;
+    20) b="/scratch/11-sur$rosetta";;
+    21) b="/scratch/12-mon$rosetta";;
+    22) b="/scratch/13-ven$rosetta";;
+    23) b="/scratch/14-son$rosetta";;
+  esac
+  if [ $version = "master" -o $version = "trunk" ]; then
+    blddir="$b/gcc-master"
+  else
+    blddir="$b/gcc-$gccmaj"
+  fi
+fi
+
+if [ ! -d $blddir ];then
+  echo "creating build dir : $blddir"
+  mkdir -p $blddir
+  if [ $? -ne 0 -o ! -d $blddir ];then
+    echo "failed, giving up" >&2
+    exit 1
+  fi
+fi
+
+cd $blddir
+wd=`pwd`
+if [ $blddir != $wd ];then
+  echo "did not seem to change to $blddir, refusing to rm -rf" >&2
+  exit 1
+else
+  echo "We're working in $blddir"
+fi
+
+# Try to be cautious.
+echo "`date -u \"+%y%m%d-%H%M : \"`removing old build... and the install in $prefix"
+rm -rf prev-* stage?* build-* gcc fixincludes lib* gmp mpfr mpc isl $arch-* zlib bunsen-* gnattools intl gettext libiconv Makefile c++tools conf.txt config.status config.log sum.txt compare serdep.tmp bld.txt *_stats.txt summ.txt build_date.txt
+rm -rf $prefix/{bin,lib,libexec,include,share}
+
+host_shared=
+if [ $hostshr -eq 1 -a $is32b -eq 1 ];then
+  host_shared='--enable-host-shared'
+fi
+
+# No need to put / as sysroot, that's the default.
+sysroot_opt=
+if [ $sysroot != "/" ]; then
+  sysroot_opt="--with-sysroot=$sysroot"
+fi
+
+configCMD="$reponame/configure --prefix=$prefix --build=$build $sysroot_opt $add_libphobos --disable-libstdcxx-pch $host_shared --enable-languages=$langlist $extra_config CC=$cc CXX=$cxx"
+
+echo "`date -u \"+%y%m%d-%H%M : \"`configuring with : $configCMD"
+echo "`date -u \"+%y%m%d-%H%M : \"`configuring with : $configCMD" >config_stats.txt
+/usr/bin/time -l sh -c "$configCMD >conf.txt 2>&1" 2>>config_stats.txt
+if [ $? -ne 0 ];then
+ echo "`date -u \"+%y%m%d-%H%M : \"`configure failed" >&2
+ exit 1
+else
+ echo "`date -u \"+%y%m%d-%H%M : \"`configured OK, now to build"
+fi
+
+# set the job count, if not specified.  This will use all the cores on the
+# older minis.
+if [ "X$num_jobs" = "X" ]; then
+  num_jobs=`sysctl -n hw.activecpu`
+  if [ $num_jobs -gt 10 ]; then
+    # On the servers, only use half the CPUs
+    num_jobs=`expr $num_jobs / 2`
+  elif [ $num_jobs -gt 6 ]; then
+    # otherwise, leave a little CPU for other work if there's enough
+    num_jobs=`expr $num_jobs - 2`
+  fi
+fi
+
+buildCMD="make -j$num_jobs STAGE1_CFLAGS='-O -pipe' STAGE1_CXXFLAGS='-O -pipe'"
+echo "`date -u \"+%y%m%d-%H%M : \"`building with : $buildCMD"
+echo "`date -u \"+%y%m%d-%H%M : \"`building with : $buildCMD" >build_stats.txt
+/usr/bin/time -l sh -c "$buildCMD >bld.txt 2>&1" 2>>build_stats.txt
+if [ $? -ne 0 ];then
+ echo "`date -u \"+%y%m%d-%H%M : \"`build failed" >&2
+ exit 1
+else
+ date -u '+%y%m%d-%H%M' >build_date.txt
+ echo "`date -u \"+%y%m%d-%H%M : \"`built OK, now to test"
+fi
+
+# To get reliable tests on macOS > 10.10 with GCC versions earlier than
+# GCC-14, we need to install before testing
+if [ $gccmaj -lt 14 -a $kernmaj -ge 15 ]; then
+  installCMD="make install"
+  echo "`date -u \"+%y%m%d-%H%M : \"`installing with : $installCMD" >install_stats.txt
+  /usr/bin/time -l nice sh -c "$installCMD >ins.txt 2>&1" 2>>install_stats.txt
+  if [ $? -ne 0 ];then
+    echo "`date -u \"+%y%m%d-%H%M : \"`install failed" >&2
+    exit 1
+  else
+    echo "`date -u \"+%y%m%d-%H%M : \"`install OK"
+  fi
+fi
+
+testCMD="make -j$num_jobs -k check"
+echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD"
+echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD" >test_stats.txt
+/usr/bin/time -l nice sh -c "$testCMD >tst.txt 2>&1" 2>>test_stats.txt
+echo "`date -u \"+%y%m%d-%H%M : \"`testing finished, writing the summary"
+/src-local/build-scripts/test_summary.sh >summ.txt
+
+#echo "src : $reponame build $build$rosetta bootstrap $bootstrap"
+#echo "langs : $langlist has D $hasD add_libphobos $add_libphobos"
+#echo "sysroot : $sysroot OSversion $OSvers prefix $prefix"
+
+
+

@@ -1,0 +1,73 @@
+
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_texinfo()
+{
+  if [ $# -lt 2 ]; then
+    echo "do_build_textinfo() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/texinfo-6.7.tar.gz
+  if [ $? -ne 0 ];then
+   echo "texinfo source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "texinfo-bld"
+  pushd "texinfo-bld" >/dev/null
+  config_cmd="../texinfo-6.7/configure --prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  config_cmd="$config_cmd --disable-perl-xs"
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "texinfo configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_texinfo()
+{
+  pushd "texinfo-bld" >/dev/null
+  texinfo_make_extra=
+  if [ $# -ge 1 ]; then
+    texinfo_make_extra="-j $1"
+  fi
+  echo "building : make $texinfo_make_extra"
+  make $texinfo_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "texinfo build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_texinfo()
+{
+  pushd "texinfo-bld" >/dev/null
+  echo "installing texinfo"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "texinfo install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+

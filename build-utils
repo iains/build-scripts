@@ -1,0 +1,45 @@
+
+get_darwin_vers()
+{
+  kernname=`uname -s | tr '[:upper:]' '[:lower:]'`
+  if [ $kernname != "darwin" ]; then
+    echo "not a Darwin system?" >&2
+    return 2
+  fi
+  kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
+  echo "$kernname$kernmaj"
+}
+
+get_kernel_arch()
+{
+  # Amend for cases that we build with a different arch name from the
+  # one reported by the OS.
+  karch=`uname -m`
+  case $karch in
+    arm64)
+      karch="aarch64" ;;
+    i386)
+      karch="i686" ;;
+  esac
+  echo "$karch"
+}
+
+# One, optional, parm - an override arch.
+get_build_triple()
+{
+  kernarch=`get_kernel_arch`
+  darwinN=`get_darwin_vers`
+
+  # allow for override of the arch.
+  arch=
+  if [ $# -gt 0 ]; then
+    arch=$1
+    if [ $arch = "arm64" ]; then
+      arch="aarch64"
+    fi
+  else
+    arch=$kernarch
+  fi
+
+  echo "$arch-apple-$darwinN"
+}

@@ -1,0 +1,79 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_darwin_expect()
+{
+  if [ $# -lt 2 ]; then
+    echo "configure_darwin_expect() : missing source or prefix." >&2
+    return 2
+  fi
+
+  if [ -d "darwin-expect" ]; then
+    pushd "darwin-expect" >/dev/null
+    git checkout -f darwin-expect-5-45r2
+    popd >/dev/null
+  else
+    git clone /repos/darwin-expect -b darwin-expect-5-45r2
+  fi
+  if [ $? -ne 0 ];then
+   echo "darwin_expect source clone failed" >&2
+   return 2
+  fi
+  mkdir -p "darwin_expect-bld"
+  pushd "darwin_expect-bld" >/dev/null
+  config_cmd="--prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  config_cmd="$config_cmd --disable-shared --enable-static"
+  ldflags="-L$2/lib -ltclstub8.6 -framework CoreFoundation -lz"
+  config_cmd="$config_cmd --with-tcl=$2/lib "
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd LDFLAGS=\"$ldflags\""
+  #config_cmd="$config_cmd >conf.txt"
+  ../darwin-expect/configure $config_cmd LDFLAGS="$ldflags" >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "darwin_expect configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_darwin_expect()
+{
+  pushd "darwin_expect-bld" >/dev/null
+  darwin_expect_make_extra=
+  if [ $# -ge 1 ]; then
+    darwin_expect_make_extra="-j $1"
+  fi
+  echo "building : make $darwin_expect_make_extra"
+  make $darwin_expect_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "darwin_expect build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_darwin_expect()
+{
+  pushd "darwin_expect-bld" >/dev/null
+  echo "installing darwin_expect"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "darwin_expect install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}

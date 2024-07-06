@@ -1,0 +1,133 @@
+#! /bin/sh
+
+# Set up /opt/iains/<build>/gcc-build/{bin,scripts}
+
+scripts=`dirname $0`
+
+oss_source="/source/oss-tarballs"
+
+print_help()
+{
+  echo "`basename $0` [options]"
+  echo "options:"
+  echo " --prefix    : specify the prefix"
+  echo " --arch      : specify a different arch from the kernel"
+  echo " --jobs/-j   : number of jobs for make and check."
+  echo " --force/-f  : continue on non-fatal error."
+  echo " --help/-h   : this output."
+}
+
+arch=
+prefix=
+num_jobs=
+goon=1
+while [ $goon -eq 1 -a $# -gt 0 ]
+do
+  case $1 in
+    --help | -h)
+      print_help
+      exit 0
+      ;;
+    --prefix)
+      prefix=$2
+      shift; shift
+      ;;
+    --arch)
+      arch=$2
+      shift; shift
+      if [ $arch = "arm64" ]; then
+        arch="aarch64"
+      fi
+      ;;
+    -j | --jobs)
+      num_jobs=$2
+      shift; shift
+      ;;
+    *)
+      goon=0
+      ;;
+  esac
+done
+
+cc=clang
+cxx=clang++
+
+. $scripts/build-utils
+. $scripts/build-texinfo
+. $scripts/build-tcl
+. $scripts/build-darwin-expect
+. $scripts/build-dejagnu
+
+build=`get_build_triple $arch`
+
+if [ "X$prefix" = "X" ]; then
+  prefix="/opt/iains/$build/gcc-build-tools"
+fi
+
+echo "Installing to : $prefix"
+
+# set the job count, if not specified.  This will use all the cores on the
+# older minis.
+if [ "X$num_jobs" = "X" ]; then
+  num_jobs=`sysctl -n hw.activecpu`
+  if [ $num_jobs -gt 10 ]; then
+    # On the servers, only use half the CPUs
+    num_jobs=`expr $num_jobs / 2`
+  elif [ $num_jobs -gt 6 ]; then
+    # otherwise, leave a little CPU for other work if there's enough
+    num_jobs=`expr $num_jobs - 2`
+  fi
+fi
+
+# texinfo
+configure_texinfo $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_texinfo $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_texinfo
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+# tcl
+configure_tcl $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_tcl $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_tcl
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+# expect
+configure_darwin_expect $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_darwin_expect $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_darwin_expect
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+# dejagnu
+configure_dejagnu $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_dejagnu $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_dejagnu
+if [ $? -ne 0 ]; then
+  exit 1
+fi

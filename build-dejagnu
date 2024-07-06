@@ -1,0 +1,69 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_dejagnu()
+{
+  if [ $# -lt 2 ]; then
+    echo "configure_dejagnu() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/dejagnu-1.6.2.tar.gz
+  if [ $? -ne 0 ];then
+   echo "dejagnu source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "dejagnu-bld"
+  pushd "dejagnu-bld" >/dev/null
+  config_cmd="../dejagnu-1.6.2/configure --prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "dejagnu configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_dejagnu()
+{
+  pushd "dejagnu-bld" >/dev/null
+  dejagnu_make_extra=
+  if [ $# -ge 1 ]; then
+    dejagnu_make_extra="-j $1"
+  fi
+  echo "building : make $dejagnu_make_extra"
+  make $dejagnu_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "dejagnu build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_dejagnu()
+{
+  pushd "dejagnu-bld" >/dev/null
+  echo "installing dejagnu"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "dejagnu install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}

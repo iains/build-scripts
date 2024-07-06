@@ -1,0 +1,70 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_tcl()
+{
+  if [ $# -lt 2 ]; then
+    echo "configure_tcl() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/tcl8.6.14-src.tar.gz
+  if [ $? -ne 0 ];then
+   echo "tcl source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "tcl-bld"
+  pushd "tcl-bld" >/dev/null
+  config_cmd="../tcl8.6.14/unix/configure --prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  config_cmd="$config_cmd --disable-shared --enable-static --with-pic"
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "tcl configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_tcl()
+{
+  pushd "tcl-bld" >/dev/null
+  tcl_make_extra=
+  if [ $# -ge 1 ]; then
+    tcl_make_extra="-j $1"
+  fi
+  echo "building : make $tcl_make_extra"
+  make $tcl_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "tcl build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_tcl()
+{
+  pushd "tcl-bld" >/dev/null
+  echo "installing tcl"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "tcl install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}

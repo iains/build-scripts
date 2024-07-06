@@ -1,0 +1,4 @@
+if [ ! -d /Volumes/ramdisk ] ; then
+diskutil erasevolume HFSX "ramdisk" `hdiutil attach -nomount ram://4194304`
+fi
+export TMPDIR=/Volumes/ramdisk
