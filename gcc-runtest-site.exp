@@ -1,0 +1,104 @@
+global target_list
+global tool_timeout
+
+global scripts_dir 
+if [info exists env(SCRIPTS_DIR)] {
+  set scripts_dir "$env(SCRIPTS_DIR)"
+  puts "scripts dir: $scripts_dir/.."
+} else {
+   puts "warning: scripts dir not set."
+   set scripts_dir "/source"
+}
+
+global boards_dir
+set boards_dir "$scripts_dir/dejagnu-boards"
+
+case "$target_triplet" in {
+   { "i?86-*-solaris2.1[0-9]" } {
+	# FIXME: Disable multilib testing if the host cannot execute AMD64
+	# binaries.  Should be exceedingly rare now (cf. erebus).
+	set target_list { "unix{,-m64}" }
+   }
+   { "mips-sgi-irix6*" } {
+	# FIXME: Disable multilib testing if the host cannot execute N64
+	# binaries.  We cannot selectively disable only one multilib during
+	# the build.
+	set target_list { "unix{,-mabi=32,-mabi=64}" }
+   }
+   { "sparc*-*-solaris2*" } {
+	set target_list { "unix{,-m64}" }
+   }
+   { "*-*-darwin[5-8]*" } {
+	set target_list { "unix" }
+	set tool_timeout 240
+	puts "tool timeout 3mins"
+   }
+   { "*-*-darwin9*" } {
+	set target_list { "unix{-m32,-m64}" }
+	set tool_timeout 240
+   }
+   { "i?86-*-darwin10*" } {
+	set target_list { "unix" }
+   }
+   { "powerpc-*-darwin10*" } {
+	set target_list { "unix" }
+   }
+   { "*-*-darwin1[01234567]*" } {
+	set target_list { "unix{-m64,-m32}" }
+	set tool_timeout 120
+	puts "gcc-runtest-site : tool timeout 2 mins"
+   }
+   { "*-*-darwin1[89]*" } {
+	set target_list { "unix" }
+	set tool_timeout 60
+	puts "gcc-runtest-site : tool timeout 1 min"
+   }
+   { "*-*-darwin2*" } {
+	set target_list { "unix" }
+	set tool_timeout 60
+	puts "gcc-runtest-site : tool timeout 1 min"
+   }
+   { "x86_64-*-linux-gnu" } {
+	set target_list { "unix{-m32,-m64}" }
+	set tool_timeout 60
+   }
+   { "arm-*-eabi*" } {
+	set target_list { "arm-sim{,-mthumb}" }
+	puts "dejagnu - setting timeout default to 2s"
+	set tool_timeout 2
+   }
+   { "arm-*-elf" } {
+	set target_list { "arm-sim" }
+   }
+   { "armel-*-*" } {
+	set target_list { "arm-sim" }
+	puts "dejagnu - setting timeout default to 2s"
+	set tool_timeout 2
+   }
+   { "cris-*-*" } {
+	set target_list { "cris-sim" }
+	puts "dejagnu - setting timeout default to 20s"
+	set tool_timeout 20
+   }
+   { "mipsisa64-*-*" } {
+   # maybe .. {,-mips64r2,-mips32r2}
+	set target_list { "mips-sim-idt64" }
+	puts "dejagnu - setting timeout default to 2s"
+	set tool_timeout 2
+   }
+   { "sparc-*-*" } {
+	set target_list { "sparc-sim" }
+	puts "dejagnu - setting timeout default to 2s"
+	set tool_timeout 2
+   }
+   { "powerpc-*-eabi*" } {
+	set target_list { "powerpc-sim" }
+	puts "dejagnu - setting timeout default to 2s"
+	set tool_timeout 2
+   }
+   default {
+	# Works for alpha*-*-osf*, i?86-*-solaris2.[89] and mips-sgi-irix5*
+	# . and for darwin < 9.
+       set target_list { "unix" }
+   }
+}

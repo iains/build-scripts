@@ -1,0 +1,10 @@
+proc no_exe_load { dest prog args } {
+   verbose -log "no_exe_load $prog $args "
+   return [list "xfail" $prog $args]
+}
+
+proc no_exe_open { board } {
+    return 0
+}
+
+set_board_info protocol  "no_exe"

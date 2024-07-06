@@ -62,3 +62,16 @@ fi
 for s in $script_list; do
   cp $scripts/$s $prefix/bin/$s
 done
+
+if [ ! -d $prefix/dejagnu-boards ]; then
+  mkdir -p $prefix/dejagnu-boards
+fi
+
+dejagnu_list="gcc-runtest-site.exp gcc-env \
+ dejagnu-boards/dummy.exp dejagnu-boards/no-exe.exp "
+
+for d in $dejagnu_list; do
+  cp $scripts/$d $prefix/$d
+done
+
+

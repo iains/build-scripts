@@ -1,0 +1,5 @@
+
+export SCRIPTS_DIR=`print-install-dir`
+export DEJAGNU=$SCRIPTS_DIR/../gcc-runtest-site.exp
+export EDITOR=vi
+export GNAT_FILE_NAME_CASE_SENSITIVE=1

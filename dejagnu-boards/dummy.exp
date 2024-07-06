@@ -1,0 +1,15 @@
+# The canonical unix board description.
+load_generic_config "no-exe"
+
+#set me [get_local_hostname]
+
+#set b [board_info build name]
+#set h [board_info host name]
+#set t [board_info target name]
+#puts "build = $b host = $h target = $t me = $me"
+
+process_multilib_options ""
+
+set_board_info compiler  "[find_gcc]"
+
+set_board_info bmk,use_alarm 1
