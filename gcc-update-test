@@ -11,7 +11,7 @@
 # Allow pushing to a local db.
 # and default to this.
 
-gitpushurl='home:/repos/test-results.git'
+gitpushurl='/repos/test-results.git'
 do_local=1
 do_bunsen=0
 jfdi=0
