@@ -454,7 +454,7 @@ echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD"
 echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD" >test_stats.txt
 /usr/bin/time -l nice sh -c "$testCMD >tst.txt 2>&1" 2>>test_stats.txt
 echo "`date -u \"+%y%m%d-%H%M : \"`testing finished, writing the summary"
-/src-local/build-scripts/test_summary.sh >summ.txt
+/src-local/build-scripts/test-summary >summ.txt
 
 #echo "src : $reponame build $build$rosetta bootstrap $bootstrap"
 #echo "langs : $langlist has D $hasD add_libphobos $add_libphobos"
