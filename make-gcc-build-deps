@@ -77,6 +77,22 @@ if [ "X$compiler" = "X" ]; then
     cc=clang
     cxx=clang++
   fi
+else
+  case $compiler in
+    gcc | g\+\+)
+      cc=gcc
+      cxx=g++
+      ;;
+    *-gcc | *-g\+\+)
+      b=`echo $compiler | sed -e s/-g..$//`
+      cc="$b-gcc"
+      cxx="$b-g++"
+      ;;
+    clang*)
+      cc="clang"
+      cxx="clang++"
+      ;;
+  esac
 fi
 
 echo "Installing to : $prefix, using $cc as the compiler"
