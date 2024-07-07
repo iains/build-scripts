@@ -11,6 +11,7 @@ print_help()
   echo "`basename $0` [options]"
   echo "options:"
   echo " --prefix    : specify the prefix"
+  echo " --compiler  : specify the compiler"
   echo " --arch      : specify a different arch from the kernel"
   echo " --jobs/-j   : number of jobs for make and check."
   echo " --force/-f  : continue on non-fatal error."
@@ -20,6 +21,7 @@ print_help()
 arch=
 prefix=
 num_jobs=
+compiler=
 goon=1
 while [ $goon -eq 1 -a $# -gt 0 ]
 do
@@ -30,6 +32,10 @@ do
       ;;
     --prefix)
       prefix=$2
+      shift; shift
+      ;;
+    --compiler)
+      compiler=$2
       shift; shift
       ;;
     --arch)
@@ -49,9 +55,6 @@ do
   esac
 done
 
-cc=clang
-cxx=clang++
-
 . $scripts/build-utils
 . $scripts/build-texinfo
 . $scripts/build-tcl
@@ -64,7 +67,19 @@ if [ "X$prefix" = "X" ]; then
   prefix="/opt/iains/$build/gcc-build-tools"
 fi
 
-echo "Installing to : $prefix"
+# If the user did not specify a compiler, use clang on systems > 10.8.
+kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
+if [ "X$compiler" = "X" ]; then
+  if [ $kernmaj -lt 13 ]; then
+    cc="$build-gcc"
+    cxx="$build-g++"
+  else
+    cc=clang
+    cxx=clang++
+  fi
+fi
+
+echo "Installing to : $prefix, using $cc as the compiler"
 
 # set the job count, if not specified.  This will use all the cores on the
 # older minis.
