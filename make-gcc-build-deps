@@ -83,6 +83,10 @@ else
       cc=gcc
       cxx=g++
       ;;
+    gcc-4.2 | g\+\+-4.2)
+      cc=gcc-4.2
+      cxx=g++-4.2
+      ;;
     *-gcc | *-g\+\+)
       b=`echo $compiler | sed -e s/-g..$//`
       cc="$b-gcc"
