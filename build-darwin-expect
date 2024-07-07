@@ -9,10 +9,10 @@ configure_darwin_expect()
 
   if [ -d "darwin-expect" ]; then
     pushd "darwin-expect" >/dev/null
-    git checkout -f darwin-expect-5-45r2
+    git checkout -f darwin-expect-5-45r3
     popd >/dev/null
   else
-    git clone /repos/darwin-expect -b darwin-expect-5-45r2
+    git clone /repos/darwin-expect -b darwin-expect-5-45r3
   fi
   if [ $? -ne 0 ];then
    echo "darwin_expect source clone failed" >&2
