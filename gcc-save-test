@@ -61,6 +61,7 @@ fi
 machine=`uname -m`
 target=`grep target= gcc/Makefile | head -1 | sed -e 's,target=,,'`
 host=`grep host= gcc/Makefile | head -1 | sed -e 's,host=,,'`
+build=`grep build= gcc/Makefile | head -1 | sed -e 's,build=,,'`
 arch=`echo $target | sed -e 's,-.*,,'`
 darwin=`echo $target | sed -e 's,.*-.*-,,' | sed -e 's,\.[0-9.]*,,'`
 
