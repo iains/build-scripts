@@ -14,24 +14,26 @@ extra_config=
 reponame=
 branchname=
 arch=
+install=0
 
 print_help()
 {
   echo "`basename $0` [options] [gcc-version [bootstrap]]"
   echo "options:"
-  echo " --update/-u : update the source tree before starting (stop if unchanged)."
-  echo " --repo      : repository path (default /src-local/gcc-git-major)."
-  echo " --branch    : repository branch (default releases/gcc-major or master)."
-  echo " --blddir    : build directory (default /scratch/OS-ver[rosetta]/gcc-major)."
-  echo " --prefix    : specify prefix (default /opt/iains/<triple>/gcc-<base-ver>)."
-  echo " --langs     : specify comma-separated list of languages to build (default = all)."
-  echo " --sysroot   : specify sysroot (default depends on OS version)."
-  echo " --config    : supply extra configure parms (e.g. cpu, tune etc)."
-  echo " --arch      : specify a different arch from the kernel"
-  echo " --hostshr   : enable host shared on 32b hosts."
-  echo " --jobs/-j   : number of jobs for make and check."
-  echo " --force/-f  : continue on non-fatal error."
-  echo " --help/-h   : this output."
+  echo " --update/-u  : update the source tree before starting (stop if unchanged)."
+  echo " --repo       : repository path (default /src-local/gcc-git-major)."
+  echo " --branch     : repository branch (default releases/gcc-major or master)."
+  echo " --blddir     : build directory (default /scratch/OS-ver[rosetta]/gcc-major)."
+  echo " --prefix     : specify prefix (default /opt/iains/<triple>/gcc-<base-ver>)."
+  echo " --langs      : specify comma-separated list of languages to build (default = all)."
+  echo " --sysroot    : specify sysroot (default depends on OS version)."
+  echo " --config     : supply extra configure parms (e.g. cpu, tune etc)."
+  echo " --arch       : specify a different arch from the kernel"
+  echo " --hostshr    : enable host shared on 32b hosts."
+  echo " --jobs/-j    : number of jobs for make and check."
+  echo " --force/-f   : continue on non-fatal error."
+  echo " --install/-i : install the compiler before testing."
+  echo " --help/-h    : this output."
 }
 
 goon=1
@@ -91,6 +93,10 @@ do
       ;;
     -f | --force)
       force=1
+      shift
+      ;;
+    -i | --install)
+      install=1
       shift
       ;;
     *)
@@ -437,7 +443,7 @@ fi
 
 # To get reliable tests on macOS > 10.10 with GCC versions earlier than
 # GCC-14, we need to install before testing
-if [ $gccmaj -lt 14 -a $kernmaj -ge 15 ]; then
+if [ $install -ne 0 -o \( $gccmaj -lt 14 -a $kernmaj -ge 15 \) ]; then
   installCMD="make install"
   echo "`date -u \"+%y%m%d-%H%M : \"`installing with : $installCMD" >install_stats.txt
   /usr/bin/time -l nice sh -c "$installCMD >ins.txt 2>&1" 2>>install_stats.txt
