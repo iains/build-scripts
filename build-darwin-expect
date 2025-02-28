@@ -7,17 +7,12 @@ configure_darwin_expect()
     return 2
   fi
 
-  if [ -d "darwin-expect" ]; then
-    pushd "darwin-expect" >/dev/null
-    git checkout -f darwin-expect-5-45r3
-    popd >/dev/null
-  else
-    git clone /repos/darwin-expect -b darwin-expect-5-45r3
-  fi
+  tar xf $1/darwin-expect-5-45r3.tgz
   if [ $? -ne 0 ];then
-   echo "darwin_expect source clone failed" >&2
+   echo "darwin expect source extraction failed" >&2
    return 2
   fi
+
   mkdir -p "darwin_expect-bld"
   pushd "darwin_expect-bld" >/dev/null
   config_cmd="--prefix=$2"
@@ -35,7 +30,7 @@ configure_darwin_expect()
   fi 
   echo "configuring: $config_cmd LDFLAGS=\"$ldflags\""
   #config_cmd="$config_cmd >conf.txt"
-  ../darwin-expect/configure $config_cmd LDFLAGS="$ldflags" >conf.txt
+  ../darwin-expect-5-45r3/configure $config_cmd LDFLAGS="$ldflags" >conf.txt
   if [ $? -ne 0 ]; then
     echo "darwin_expect configure failed" >&2
     popd >/dev/null

@@ -4,7 +4,7 @@
 
 scripts=`dirname $0`
 
-oss_source="/source/oss-tarballs"
+oss_source=$scripts/archs
 
 print_help()
 {
@@ -60,6 +60,10 @@ done
 . $scripts/build-tcl
 . $scripts/build-darwin-expect
 . $scripts/build-dejagnu
+. $scripts/build-gnu-m4-1-4-19
+. $scripts/build-autoconf-2-69
+. $scripts/build-automake-1-15-1
+. $scripts/build-gperf-3-1
 
 build=`get_build_triple $arch`
 
@@ -100,6 +104,7 @@ else
 fi
 
 echo "Installing to : $prefix, using $cc as the compiler"
+export PATH=$prefix/bin:$PATH
 
 # set the job count, if not specified.  This will use all the cores on the
 # older minis.
@@ -112,6 +117,62 @@ if [ "X$num_jobs" = "X" ]; then
     # otherwise, leave a little CPU for other work if there's enough
     num_jobs=`expr $num_jobs - 2`
   fi
+fi
+
+# m4-1.4.19
+configure_m4 $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_m4 $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_m4
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# autoconf-2.69
+configure_autoconf $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_autoconf $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_autoconf
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# automake-1.15.1
+configure_automake $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_automake $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_automake
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# gperf-3.1
+configure_gperf $oss_source $prefix $build $cc $cxx
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_gperf $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_gperf
+if [ $? -ne 0 ]; then
+  exit 1
 fi
 
 # texinfo
@@ -127,6 +188,7 @@ install_texinfo
 if [ $? -ne 0 ]; then
   exit 1
 fi
+
 # tcl
 configure_tcl $oss_source $prefix $build $cc $cxx
 if [ $? -ne 0 ]; then
@@ -140,6 +202,7 @@ install_tcl
 if [ $? -ne 0 ]; then
   exit 1
 fi
+
 # expect
 configure_darwin_expect $oss_source $prefix $build $cc $cxx
 if [ $? -ne 0 ]; then
@@ -153,6 +216,7 @@ install_darwin_expect
 if [ $? -ne 0 ]; then
   exit 1
 fi
+
 # dejagnu
 configure_dejagnu $oss_source $prefix $build $cc $cxx
 if [ $? -ne 0 ]; then
