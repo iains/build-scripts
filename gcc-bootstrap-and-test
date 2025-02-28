@@ -347,6 +347,7 @@ fi
 
 if [ "X$blddir" = "X" ]; then
   case $kernmaj in
+     8) b="/scratch/10-4-tig";;
      9) b="/scratch/10-5-leo$rosetta";;
     10) b="/scratch/10-6-sno$rosetta";;
     11) b="/scratch/10-7-lion";;
@@ -362,6 +363,7 @@ if [ "X$blddir" = "X" ]; then
     21) b="/scratch/12-mon$rosetta";;
     22) b="/scratch/13-ven$rosetta";;
     23) b="/scratch/14-son$rosetta";;
+    24) b="/scratch/15-seq$rosetta";;
   esac
   if [ $version = "master" -o $version = "trunk" ]; then
     blddir="$b/gcc-master"
