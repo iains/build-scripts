@@ -60,6 +60,7 @@ done
 . $scripts/build-tcl
 . $scripts/build-darwin-expect
 . $scripts/build-dejagnu
+. $scripts/build-gettext
 . $scripts/build-gnu-m4-1-4-19
 . $scripts/build-autoconf-2-69
 . $scripts/build-automake-1-15-1
@@ -117,6 +118,20 @@ if [ "X$num_jobs" = "X" ]; then
     # otherwise, leave a little CPU for other work if there's enough
     num_jobs=`expr $num_jobs - 2`
   fi
+fi
+
+# gettext 0.22.5 is known to work (0.24 does not).
+configure_gettext $oss_source $prefix $build $cc $cxx 0.22.5
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_gettext $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_gettext
+if [ $? -ne 0 ]; then
+  exit 1
 fi
 
 # m4-1.4.19
