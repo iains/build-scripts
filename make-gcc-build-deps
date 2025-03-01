@@ -65,6 +65,7 @@ done
 . $scripts/build-autoconf-2-69
 . $scripts/build-automake-1-15-1
 . $scripts/build-gperf-3-1
+. $scripts/build-autogen-5-18-16
 
 build=`get_build_triple $arch`
 
@@ -106,6 +107,7 @@ fi
 
 echo "Installing to : $prefix, using $cc as the compiler"
 export PATH=$prefix/bin:$PATH
+export PKG_CONFIG_PATH=$prefix/lib/pkgconfig
 
 # set the job count, if not specified.  This will use all the cores on the
 # older minis.
@@ -245,3 +247,6 @@ install_dejagnu
 if [ $? -ne 0 ]; then
   exit 1
 fi
+
+# autogen is more complex - delegate to a larger script.
+build_autogen $oss_source $prefix $build $cc $cxx $num_jobs

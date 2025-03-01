@@ -1,0 +1,276 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX, jobs
+
+# We have to build both deps of autogen and some tools that the build needs.
+
+build_autogen ()
+{
+  # This is a much more complex build, let's make sure we specify everything.
+  if [ $# -lt 6 ]; then
+    echo "build-autogen : missing parameter(s)." >&2
+    return 2
+  fi
+
+  mkdir -p "autogen-5-18-16"
+  pushd "autogen-5-18-16" >/dev/null
+  mkdir -p "autogen-build"
+
+  # Place to put tools and deps that we do not install.
+  temp_build_path=`pwd`/autogen-build
+  PATH=$temp_build_path/bin:$PATH
+  export PATH
+  PKG_CONFIG_PATH=$temp_build_path/lib/pkgconfig:$PKG_CONFIG_PATH
+  export PKG_CONFIG_PATH
+
+  tar xf $1/libunistring-1.3.tar.gz
+  mkdir  -p "libunistring-1-3"
+  pushd "libunistring-1-3" >/dev/null
+  config_cmd="../libunistring-1.3/configure --prefix=$temp_build_path --build=$3 --disable-shared --with-pic CC=$4 CXX=$5"
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "libunistring configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "libunistring build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "libunistring install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  configure_gettext $1 $temp_build_path $3 $4 $5 0.22.5
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+  build_gettext $6
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+  install_gettext
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+
+  # We need a gnu sed ...
+  tar xf $1/sed-4.9.tar.gz
+  config_cmd="../sed-4.9/configure --prefix=$temp_build_path --build=$3 CC=$4 CXX=$5"
+  mkdir  -p "sed-bld"
+  pushd "sed-bld" >/dev/null
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "sed configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "sed build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "sed install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  # We need pkgconf/pkg-config
+  #tar xf $1/pkg-config-2.3.0.tar.gz
+  tar xf $1/pkg-config-0.29.2.tar.gz
+  mkdir  -p "pkg-config-bld"
+  pushd "pkg-config-bld" >/dev/null
+  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib CC=$4 CXX=$5"
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "pkgconf configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "pkgconf build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "pkgconf install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+  #pushd $temp_build_path/bin >/dev/null
+  #ln -f pkgconf pkg-config
+  #popd >/dev/null
+
+  # We need libltdl
+  tar xf $1/libtool-2.5.4.tar.gz
+  mkdir  -p "libtool-bld"
+  pushd "libtool-bld" >/dev/null
+  config_cmd="../libtool-2.5.4/configure --prefix=$temp_build_path --with-pic --disable-shared --build=$3 CC=$4 CXX=$5"
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "libtool configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "libtool build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "libtool install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  # We need libgmp
+  tar xf $1/gmp-6.3.0.tar.xz
+  mkdir  -p "gmp-bld"
+  pushd "gmp-bld" >/dev/null
+  config_cmd="../gmp-6.3.0/configure --prefix=$temp_build_path --with-pic --disable-shared --build=$3 CC=$4 CXX=$5"
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "gmp configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "gmp build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "gmp install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  # We need bdw-gc
+  tar xf $1/gc-8.2.8.tar.gz
+  config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3 CC=$4 CXX=$5"
+  mkdir  -p "gc-bld"
+  pushd "gc-bld" >/dev/null
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "bdw-gc configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "bdw-gc  build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "bdw-gc install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  # We need mktemp from coreutils
+  tar xf $1/coreutils-9.6.tar.gz
+  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- CC=$4 CXX=$5"
+  mkdir  -p "coreutils-bld"
+  pushd "coreutils-bld" >/dev/null
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "coreutils configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "coreutils build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "coreutils install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+  pushd $temp_build_path/bin >/dev/null
+  ln -f gnu-mktemp mktemp
+  popd >/dev/null
+
+  # We need guile
+  tar xf $1/guile-2.2.7p.tar.gz
+  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared LIBFFI_CFLAGS=-I/usr/include/ffi LIBFFI_LIBS=-lffi LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules CC=$4 CXX=$5"
+  mkdir  -p "guile-bld"
+  pushd "guile-bld" >/dev/null
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "guile configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "guile build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "guile install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+
+  # Now do the build
+  tar xf $1/autogen-5.18.16p.tar.gz
+  mkdir  -p "autogen-5-18-16"
+  pushd "autogen-5-18-16" >/dev/null
+  config_cmd="../autogen-5.18.16-p/configure --prefix=$2 --build=$3 ac_cv_func_utimensat=no --disable-shared --disable-dependency-tracking LDFLAGS=-Wl,-framework,CoreFoundation  CC=$4 CXX=$5"
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "autogen configure failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make -j $6 >bld.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "autogen build failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ]; then
+    echo "autogen install failed" >&2
+    popd >/dev/null
+    return 2
+  fi
+  popd >/dev/null
+}
