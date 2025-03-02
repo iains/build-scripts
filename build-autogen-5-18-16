@@ -64,9 +64,9 @@ build_autogen ()
 
   # We need a gnu sed ...
   tar xf $1/sed-4.9.tar.gz
-  config_cmd="../sed-4.9/configure --prefix=$temp_build_path --build=$3 CC=$4 CXX=$5"
   mkdir  -p "sed-bld"
   pushd "sed-bld" >/dev/null
+  config_cmd="../sed-4.9/configure --prefix=$temp_build_path --with-libiconv-prefix=$temp_build_path --build=$3 CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
@@ -172,9 +172,9 @@ build_autogen ()
 
   # We need bdw-gc
   tar xf $1/gc-8.2.8.tar.gz
-  config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3 CC=$4 CXX=$5"
   mkdir  -p "gc-bld"
   pushd "gc-bld" >/dev/null
+  config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3 --with-libiconv-prefix=$temp_build_path CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
@@ -198,9 +198,9 @@ build_autogen ()
 
   # We need mktemp from coreutils
   tar xf $1/coreutils-9.6.tar.gz
-  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- CC=$4 CXX=$5"
   mkdir  -p "coreutils-bld"
   pushd "coreutils-bld" >/dev/null
+  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- --with-libiconv-prefix=$temp_build_path CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
@@ -227,9 +227,9 @@ build_autogen ()
 
   # We need guile
   tar xf $1/guile-2.2.7p.tar.gz
-  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared LIBFFI_CFLAGS=-I/usr/include/ffi LIBFFI_LIBS=-lffi LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules CC=$4 CXX=$5"
   mkdir  -p "guile-bld"
   pushd "guile-bld" >/dev/null
+  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared LIBFFI_CFLAGS=-I/usr/include/ffi LIBFFI_LIBS=-lffi LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules --with-libiconv-prefix=$temp_build_path CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
