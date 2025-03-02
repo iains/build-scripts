@@ -1,0 +1,74 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX, version
+
+configure_libunistring()
+{
+  if [ $# -lt 2 ]; then
+    echo "configure_libunistring() : missing source or prefix." >&2
+    return 2
+  fi
+
+  vers=1.3
+  if [ $# -ge 6 ]; then
+    vers=$6
+  fi
+
+  tar xf $1/libunistring-$vers.tar.gz
+  if [ $? -ne 0 ];then
+   echo "libunistring source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "libunistring-bld"
+  pushd "libunistring-bld" >/dev/null
+  config_cmd="../libunistring-$vers/configure --prefix=$2 --disable-shared --enable-static --with-pic --with-libiconv-prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "libunistring configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_libunistring()
+{
+  pushd "libunistring-bld" >/dev/null
+  libunistring_make_extra=
+  if [ $# -ge 1 ]; then
+    libunistring_make_extra="-j $1"
+  fi
+  echo "building : make $libunistring_make_extra"
+  make $libunistring_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "libunistring build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_libunistring()
+{
+  pushd "libunistring-bld" >/dev/null
+  echo "installing libunistring"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "libunistring install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}

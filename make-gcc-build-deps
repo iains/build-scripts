@@ -61,6 +61,7 @@ done
 . $scripts/build-darwin-expect
 . $scripts/build-dejagnu
 . $scripts/build-libiconv
+. $scripts/build-libunistring
 . $scripts/build-gettext
 . $scripts/build-gnu-m4-1-4-19
 . $scripts/build-autoconf-2-69
@@ -136,6 +137,21 @@ install_libiconv
 if [ $? -ne 0 ]; then
   exit 1
 fi
+
+# libunistring - needs iconv.
+configure_libunistring $oss_source $prefix $build $cc $cxx 
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_libunistring $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_libunistring
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
 # gettext 0.22.5 is known to work (0.24 does not).
 configure_gettext $oss_source $prefix $build $cc $cxx 0.22.5
 if [ $? -ne 0 ]; then
