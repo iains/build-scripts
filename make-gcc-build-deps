@@ -279,4 +279,4 @@ if [ $? -ne 0 ]; then
 fi
 
 # autogen is more complex - delegate to a larger script.
-build_autogen $oss_source $prefix $build $cc $cxx $num_jobs
+build_autogen $oss_source $prefix $build $cc $cxx $num_jobs $kernmaj

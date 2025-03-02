@@ -1,11 +1,11 @@
-# Args : sources_dir, prefix, build-triple, CC, CXX, jobs
+# Args : sources_dir, prefix, build-triple, CC, CXX, jobs, kernmaj
 
 # We have to build both deps of autogen and some tools that the build needs.
 
 build_autogen ()
 {
   # This is a much more complex build, let's make sure we specify everything.
-  if [ $# -lt 6 ]; then
+  if [ $# -lt 7 ]; then
     echo "build-autogen : missing parameter(s)." >&2
     return 2
   fi
@@ -144,6 +144,38 @@ build_autogen ()
   fi
   popd >/dev/null
 
+  ffi_include="LIBFFI_CFLAGS=-I/usr/include/ffi"
+  ffi_lib="LIBFFI_LIBS=-lffi"
+  if [ $7 -lt 19 ]; then
+    # For earlier macOS the system ffi is not sufficient
+    tar xf $1/libffi-3.4.7.tar.gz
+    mkdir  -p "libffi-bld"
+    pushd "libffi-bld" >/dev/null
+    config_cmd="../libffi-3.4.7/configure --prefix=$temp_build_path --with-pic --disable-shared --build=$3 CC=$4 CXX=$5"
+    echo "configuring: $config_cmd"
+    $config_cmd >conf.txt
+    if [ $? -ne 0 ]; then
+      echo "libffi configure failed" >&2
+      popd >/dev/null
+      return 2
+    fi
+    make -j $6 >bld.txt 2>&1
+    if [ $? -ne 0 ]; then
+      echo "libffi build failed" >&2
+      popd >/dev/null
+      return 2
+    fi
+    make install >ins.txt 2>&1
+    if [ $? -ne 0 ]; then
+      echo "libffi install failed" >&2
+      popd >/dev/null
+      return 2
+    fi
+    popd >/dev/null
+    ffi_include=
+    ffi_lib=
+  fi
+
   # We need libgmp
   tar xf $1/gmp-6.3.0.tar.xz
   mkdir  -p "gmp-bld"
@@ -229,7 +261,7 @@ build_autogen ()
   tar xf $1/guile-2.2.7p.tar.gz
   mkdir  -p "guile-bld"
   pushd "guile-bld" >/dev/null
-  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared LIBFFI_CFLAGS=-I/usr/include/ffi LIBFFI_LIBS=-lffi LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules --with-libiconv-prefix=$temp_build_path CC=$4 CXX=$5"
+  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared $ffi_include $ffi_lib LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules --with-libiconv-prefix=$temp_build_path CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
