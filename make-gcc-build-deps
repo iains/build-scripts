@@ -60,6 +60,7 @@ done
 . $scripts/build-tcl
 . $scripts/build-darwin-expect
 . $scripts/build-dejagnu
+. $scripts/build-libiconv
 . $scripts/build-gettext
 . $scripts/build-gnu-m4-1-4-19
 . $scripts/build-autoconf-2-69
@@ -122,6 +123,19 @@ if [ "X$num_jobs" = "X" ]; then
   fi
 fi
 
+# iconv is needed from Sonoma ...
+configure_libiconv $oss_source $prefix $build $cc $cxx 
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_libiconv $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_libiconv
+if [ $? -ne 0 ]; then
+  exit 1
+fi
 # gettext 0.22.5 is known to work (0.24 does not).
 configure_gettext $oss_source $prefix $build $cc $cxx 0.22.5
 if [ $? -ne 0 ]; then

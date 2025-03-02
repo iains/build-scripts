@@ -1,0 +1,74 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX, version
+
+configure_libiconv()
+{
+  if [ $# -lt 2 ]; then
+    echo "configure_libiconv() : missing source or prefix." >&2
+    return 2
+  fi
+
+  vers=1.18
+  if [ $# -ge 6 ]; then
+    vers=$6
+  fi
+
+  tar xf $1/libiconv-$vers.tar.gz
+  if [ $? -ne 0 ];then
+   echo "libiconv source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "libiconv-bld"
+  pushd "libiconv-bld" >/dev/null
+  config_cmd="../libiconv-$vers/configure --prefix=$2 --disable-shared --enable-static --with-pic"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 4 ]; then
+    config_cmd="$config_cmd CC=$4"
+  fi 
+  if [ $# -ge 5 ]; then
+    config_cmd="$config_cmd CXX=$5"
+  fi 
+  echo "configuring: $config_cmd"
+  $config_cmd >conf.txt
+  if [ $? -ne 0 ]; then
+    echo "libiconv configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_libiconv()
+{
+  pushd "libiconv-bld" >/dev/null
+  iconv_make_extra=
+  if [ $# -ge 1 ]; then
+    iconv_make_extra="-j $1"
+  fi
+  echo "building : make $iconv_make_extra"
+  make $iconv_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "libiconv build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_libiconv()
+{
+  pushd "libiconv-bld" >/dev/null
+  echo "installing libiconv"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "libiconv install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
