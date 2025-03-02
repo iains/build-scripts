@@ -93,7 +93,7 @@ build_autogen ()
   tar xf $1/pkg-config-0.29.2.tar.gz
   mkdir  -p "pkg-config-bld"
   pushd "pkg-config-bld" >/dev/null
-  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib CC=$4 CXX=$5"
+  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib  CFLAGS=-Wno-error=int-conversion  CC=$4 CXX=$5"
   echo "configuring: $config_cmd"
   $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
