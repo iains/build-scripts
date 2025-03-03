@@ -21,16 +21,18 @@ configure_libunistring()
   pushd "libunistring-bld" >/dev/null
   config_cmd="../libunistring-$vers/configure --prefix=$2 --disable-shared --enable-static --with-pic --with-libiconv-prefix=$2"
   if [ $# -ge 3 ]; then
-    config_cmd="$config_cmd --build=$3"
-  fi 
-  if [ $# -ge 4 ]; then
-    config_cmd="$config_cmd CC=$4"
+    config_cmd="$config_cmd --build=$3 --host=$3"
   fi 
   if [ $# -ge 5 ]; then
-    config_cmd="$config_cmd CXX=$5"
+    echo "configuring: $config_cmd CC="$4" CXX="$5""
+    $config_cmd CC="$4" CXX="$5" >conf.txt
+  elif [ $# -ge 4 ]; then
+    echo "configuring: $config_cmd CC="$4""
+    $config_cmd CC="$4" >conf.txt
+  else
+    echo "configuring: $config_cmd "
+    $config_cmd >conf.txt
   fi 
-  echo "configuring: $config_cmd"
-  $config_cmd >conf.txt
   if [ $? -ne 0 ]; then
     echo "libunistring configure failed" >&2
     popd >/dev/null

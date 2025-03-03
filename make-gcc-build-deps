@@ -75,15 +75,28 @@ if [ "X$prefix" = "X" ]; then
   prefix="/opt/iains/$build/gcc-build-tools"
 fi
 
+# Several configure scripts fail to pass -m32 (or any other -arch or -target
+# flag) to clang when the target is 32b so we need to roll our own
+
+is32_bit=0
+case $arch in
+  i?86 | powerpc | ppc) is32_bit=1 ;;
+  *) ;;
+esac
+
 # If the user did not specify a compiler, use clang on systems > 10.8.
+
 kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
 if [ "X$compiler" = "X" ]; then
   if [ $kernmaj -lt 13 ]; then
-    cc="$build-gcc"
-    cxx="$build-g++"
+    cc=$build-gcc
+    cxx=$build-g++
+  elif [ $is32_bit -ne 0 ]; then
+    cc="clang -m32"
+    cxx="clang++ -m32"
   else
-    cc=clang
-    cxx=clang++
+    cc="clang"
+    cxx="clang++"
   fi
 else
   case $compiler in
@@ -97,12 +110,17 @@ else
       ;;
     *-gcc | *-g\+\+)
       b=`echo $compiler | sed -e s/-g..$//`
-      cc="$b-gcc"
-      cxx="$b-g++"
+      cc=$b-gcc
+      cxx=$b-g++
       ;;
     clang*)
-      cc="clang"
-      cxx="clang++"
+      if [ $is32_bit -ne 0 ]; then
+        cc="clang -m32"
+        cxx="clang++ -m32"
+      else
+        cc="clang"
+        cxx="clang++"
+      fi
       ;;
   esac
 fi
@@ -124,8 +142,8 @@ if [ "X$num_jobs" = "X" ]; then
   fi
 fi
 
-# iconv is needed from Sonoma ...
-configure_libiconv $oss_source $prefix $build $cc $cxx 
+# iconv is needed from Sonoma ... but just keep the recipe consistent.
+configure_libiconv $oss_source $prefix $build "$cc" "$cxx" 
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -139,7 +157,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # libunistring - needs iconv.
-configure_libunistring $oss_source $prefix $build $cc $cxx 
+configure_libunistring $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -153,7 +171,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # gettext 0.22.5 is known to work (0.24 does not).
-configure_gettext $oss_source $prefix $build $cc $cxx 0.22.5
+configure_gettext $oss_source $prefix $build "$cc" "$cxx" 0.22.5
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -167,7 +185,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # m4-1.4.19
-configure_m4 $oss_source $prefix $build $cc $cxx
+configure_m4 $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -181,7 +199,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # autoconf-2.69
-configure_autoconf $oss_source $prefix $build $cc $cxx
+configure_autoconf $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -195,7 +213,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # automake-1.15.1
-configure_automake $oss_source $prefix $build $cc $cxx
+configure_automake $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -209,7 +227,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # gperf-3.1
-configure_gperf $oss_source $prefix $build $cc $cxx
+configure_gperf $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -223,7 +241,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # texinfo
-configure_texinfo $oss_source $prefix $build $cc $cxx
+configure_texinfo $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -237,7 +255,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # tcl
-configure_tcl $oss_source $prefix $build $cc $cxx
+configure_tcl $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -251,7 +269,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # expect
-configure_darwin_expect $oss_source $prefix $build $cc $cxx
+configure_darwin_expect $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -265,7 +283,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # dejagnu
-configure_dejagnu $oss_source $prefix $build $cc $cxx
+configure_dejagnu $oss_source $prefix $build "$cc" "$cxx"
 if [ $? -ne 0 ]; then
   exit 1
 fi
@@ -279,4 +297,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # autogen is more complex - delegate to a larger script.
-build_autogen $oss_source $prefix $build $cc $cxx $num_jobs $kernmaj
+build_autogen $oss_source $prefix $build "$cc" "$cxx" $num_jobs $kernmaj $is32_bit
+
+
