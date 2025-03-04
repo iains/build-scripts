@@ -13,25 +13,24 @@ configure_darwin_expect()
    return 2
   fi
 
-  mkdir -p "darwin_expect-bld"
-  pushd "darwin_expect-bld" >/dev/null
-  config_cmd="../darwin-expect-5-45r3/configure --prefix=$2"
+  mkdir -p "darwin-expect-bld"
+  pushd "darwin-expect-bld" >/dev/null
+  config_cmd=" --prefix=$2"
   if [ $# -ge 3 ]; then
-    config_cmd="$config_cmd --build=$3"
+    config_cmd="../darwin-expect-5-45r3/configure $config_cmd --build=$3"
   fi 
-  config_cmd="$config_cmd --disable-shared --enable-static"
+  config_cmd="$config_cmd --disable-shared --enable-static --with-tcl=$2/lib "
   ldflags="-L$2/lib -ltclstub8.6 -framework CoreFoundation -lz"
   if [ $# -ge 5 ]; then
-    echo "configuring: $config_cmd CC="$4" CXX="$5" LDFLAGS="$ldflags" "
-    $config_cmd CC="$4" CXX="$5" LDFLAGS="$ldflags" >conf.txt
+    echo "configuring: $config_cmd LDFLAGS=$ldflags CC=$4 CXX=$5"
+    $config_cmd LDFLAGS="$ldflags" CC="$4" CXX="$5"  >conf.txt
   elif [ $# -ge 4 ]; then
-    echo "configuring: $config_cmd CC="$4" LDFLAGS="$ldflags""
-    $config_cmd CC="$4" LDFLAGS="$ldflags" >conf.txt
+    echo "configuring: ../darwin-expect-5-45r3/configure $config_cmd LDFLAGS=$ldflags CC=$4"
+    $config_cmd LDFLAGS="$ldflags" CC="$4" >conf.txt
   else
-    echo "configuring: $config_cmd LDFLAGS="$ldflags""
-    $config_cmd >conf.txt
+    echo "configuring: ../darwin-expect-5-45r3/configure $config_cmd LDFLAGS=$ldflags"
+    $config_cmd LDFLAGS="$ldflags" >conf.txt
   fi 
-  #../darwin-expect-5-45r3/configure $config_cmd LDFLAGS="$ldflags" >conf.txt
   if [ $? -ne 0 ]; then
     echo "darwin_expect configure failed" >&2
     popd >/dev/null
@@ -44,7 +43,7 @@ configure_darwin_expect()
 # Args : Number of jobs
 build_darwin_expect()
 {
-  pushd "darwin_expect-bld" >/dev/null
+  pushd "darwin-expect-bld" >/dev/null
   darwin_expect_make_extra=
   if [ $# -ge 1 ]; then
     darwin_expect_make_extra="-j $1"
@@ -62,7 +61,7 @@ build_darwin_expect()
 
 install_darwin_expect()
 {
-  pushd "darwin_expect-bld" >/dev/null
+  pushd "darwin-expect-bld" >/dev/null
   echo "installing darwin_expect"
   make install >ins.txt 2>&1
   if [ $? -ne 0 ];then
