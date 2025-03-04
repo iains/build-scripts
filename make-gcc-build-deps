@@ -91,9 +91,6 @@ if [ "X$compiler" = "X" ]; then
   if [ $kernmaj -lt 13 ]; then
     cc=$build-gcc
     cxx=$build-g++
-  elif [ $is32_bit -ne 0 ]; then
-    cc="clang -m32"
-    cxx="clang++ -m32"
   else
     cc="clang"
     cxx="clang++"
@@ -114,15 +111,15 @@ else
       cxx=$b-g++
       ;;
     clang*)
-      if [ $is32_bit -ne 0 ]; then
-        cc="clang -m32"
-        cxx="clang++ -m32"
-      else
-        cc="clang"
-        cxx="clang++"
-      fi
+      cc="clang"
+      cxx="clang++"
       ;;
   esac
+fi
+
+if [ $is32_bit -ne 0 ]; then
+  cc="$cc -m32"
+  cxx="$cxx -m32"
 fi
 
 echo "Installing to : $prefix, using $cc as the compiler"
