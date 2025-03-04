@@ -92,7 +92,11 @@ build_autogen ()
   tar xf $1/pkg-config-0.29.2.tar.gz
   mkdir  -p "pkg-config-bld"
   pushd "pkg-config-bld" >/dev/null
-  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib  CFLAGS=-Wno-error=int-conversion"
+  cflags=
+  if [ $4 != "gcc-4.2" ]; then
+    cflags="CFLAGS=-Wno-error=int-conversion"
+  fi
+  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib $cflags"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -173,7 +177,7 @@ build_autogen ()
   fi
 
   # We need libgmp
-  tar xf $1/gmp-6.3.0.tar.xz
+  tar xf $1/gmp-6.3.0.tar.gz
   mkdir  -p "gmp-bld"
   pushd "gmp-bld" >/dev/null
   config_cmd="../gmp-6.3.0/configure --prefix=$temp_build_path --with-pic --disable-shared --build=$3"
@@ -200,6 +204,10 @@ build_autogen ()
 
   # We need bdw-gc
   tar xf $1/gc-8.2.8.tar.gz
+  pushd gc-8.2.8 >/dev/null
+  tar xf $1/libatomic_ops-7.8.2.tar.gz
+  ln -s libatomic_ops-7.8.2 libatomic_ops
+  popd >/dev/null
   mkdir  -p "gc-bld"
   pushd "gc-bld" >/dev/null
   config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3 --with-libiconv-prefix=$temp_build_path"
