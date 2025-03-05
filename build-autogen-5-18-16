@@ -21,6 +21,14 @@ build_autogen ()
   PKG_CONFIG_PATH=$temp_build_path/lib/pkgconfig:$PKG_CONFIG_PATH
   export PKG_CONFIG_PATH
 
+  # Punt on NLS for autogen on 10.8 and earlier, there's some configury issue with
+  # libintl.
+  nls=
+  if [ $7 -le 12 ]; then
+    nls=--disable-nls
+  fi
+
+  iconvpfx=
   # iconv is needed from Sonoma ... but just keep behaviour consistent.
   configure_libiconv $1 $temp_build_path $3 "$4" "$5"
   if [ $? -ne 0 ]; then
@@ -34,9 +42,10 @@ build_autogen ()
   if [ $? -ne 0 ]; then
     exit 1
   fi
+  iconvpfx="--with-libiconv-prefix=$temp_build_path"
 
   # libunistring ...
-  configure_libunistring $1 $temp_build_path $3 "$4" "$5" 
+  configure_libunistring $1 $temp_build_path $3 "$4" "$5"
   if [ $? -ne 0 ]; then
     exit 1
   fi
@@ -49,24 +58,26 @@ build_autogen ()
     exit 1
   fi
 
-  configure_gettext $1 $temp_build_path $3 "$4" "$5" 0.22.5
-  if [ $? -ne 0 ]; then
-    exit 1
-  fi
-  build_gettext $6
-  if [ $? -ne 0 ]; then
-    exit 1
-  fi
-  install_gettext
-  if [ $? -ne 0 ]; then
-    exit 1
+  if [ $7 -gt 12 ]; then
+    configure_gettext $1 $temp_build_path $3 "$4" "$5" 0.22.5
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
+    build_gettext $6
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
+    install_gettext
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
   fi
 
   # We need a gnu sed ...
   tar xf $1/sed-4.9.tar.gz
   mkdir  -p "sed-bld"
   pushd "sed-bld" >/dev/null
-  config_cmd="../sed-4.9/configure --prefix=$temp_build_path --with-libiconv-prefix=$temp_build_path --build=$3 "
+  config_cmd="../sed-4.9/configure --prefix=$temp_build_path $nls $iconvpfx --build=$3 "
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -90,13 +101,13 @@ build_autogen ()
 
   # We need pkgconf/pkg-config
   tar xf $1/pkg-config-0.29.2.tar.gz
-  mkdir  -p "pkg-config-bld"
+  mkdir -p "pkg-config-bld"
   pushd "pkg-config-bld" >/dev/null
   cflags=
-  if [ $4 != "gcc-4.2" ]; then
+  if [ "$4" != "gcc-4.2" ]; then
     cflags="CFLAGS=-Wno-error=int-conversion"
   fi
-  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3 --with-internal-glib $cflags"
+  config_cmd="../pkg-config-0.29.2/configure --prefix=$temp_build_path --disable-shared --with-pic --build=$3  $nls --with-internal-glib $cflags"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -204,13 +215,15 @@ build_autogen ()
 
   # We need bdw-gc
   tar xf $1/gc-8.2.8.tar.gz
-  pushd gc-8.2.8 >/dev/null
-  tar xf $1/libatomic_ops-7.8.2.tar.gz
-  ln -s libatomic_ops-7.8.2 libatomic_ops
-  popd >/dev/null
+  if [ $7 -lt 11 ]; then
+    pushd gc-8.2.8 >/dev/null
+    tar xf $1/libatomic_ops-7.8.2.tar.gz
+    ln -s libatomic_ops-7.8.2 libatomic_ops
+    popd >/dev/null
+  fi
   mkdir  -p "gc-bld"
   pushd "gc-bld" >/dev/null
-  config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3 --with-libiconv-prefix=$temp_build_path"
+  config_cmd="../gc-8.2.8/configure --prefix=$temp_build_path --with-pic --disable-shared --enable-threads=pthreads --build=$3  $nls $iconvpfx"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -240,7 +253,7 @@ build_autogen ()
   if [ $8 -ne 0 ]; then
     no_y2038=--disable-year2038
   fi
-  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- --with-libiconv-prefix=$temp_build_path $no_y2038"
+  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- $nls $iconvpfx $no_y2038"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -269,7 +282,7 @@ build_autogen ()
   tar xf $1/guile-2.2.7p.tar.gz
   mkdir  -p "guile-bld"
   pushd "guile-bld" >/dev/null
-  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared $ffi_include $ffi_lib LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules --with-libiconv-prefix=$temp_build_path"
+  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared $ffi_include $ffi_lib LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules $nls $iconvpfx"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -295,7 +308,7 @@ build_autogen ()
   tar xf $1/autogen-5.18.16p.tar.gz
   mkdir  -p "autogen-5-18-16"
   pushd "autogen-5-18-16" >/dev/null
-  config_cmd="../autogen-5.18.16-p/configure --prefix=$2 --build=$3 ac_cv_func_utimensat=no --disable-shared --disable-dependency-tracking LDFLAGS=-Wl,-framework,CoreFoundation"
+  config_cmd="../autogen-5.18.16-p/configure --prefix=$2 --build=$3 ac_cv_func_utimensat=no --disable-shared --disable-dependency-tracking $nls LDFLAGS=-Wl,-framework,CoreFoundation"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
