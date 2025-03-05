@@ -92,10 +92,10 @@ Tested on:
 | 16 / Sierra        |  N/A    |      |  Yes   |  N/A    |
 | 15 / El Capitan    |  N/A    |      |  Yes   |  N/A    |
 | 14 / Yosemite      |  N/A    | Yes  |  Yes   |  N/A    |
-| 13 / Mavericks     |  N/A    |      |  Yes   |  N/A    |
-| 12 / Mountain Lion |  N/A    |      |        |  N/A    |
+| 13 / Mavericks     |  N/A    | Yes  |  Yes   |  N/A    |
+| 12 / Mountain Lion |  N/A    | Yes  |  Yes   |  N/A    |
 | 11 / Lion          |  N/A    |      |        |  N/A    |
-| 10 / Snow Leopard  |         |      |  Yes   |  N/A    |
+| 10 / Snow Leopard  |         | Yes  |  Yes   |  N/A    |
 |  9 / Leopard       |         |      |        |  N/A    |
 |  8 / Tiger         |         |      |        |  N/A    |
 
