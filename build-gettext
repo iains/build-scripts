@@ -19,7 +19,7 @@ configure_gettext()
   fi
   mkdir -p "gettext-bld"
   pushd "gettext-bld" >/dev/null
-  config_cmd="../gettext-$vers/configure --prefix=$2 --disable-shared --enable-static --with-pic --with-libiconv-prefix=$2"
+  config_cmd="../gettext-$vers/configure --prefix=$2 --disable-java --disable-shared --enable-static --with-pic --with-libiconv-prefix=$2"
   if [ $# -ge 5 ]; then
     echo "configuring: $config_cmd CC="$4" CXX="$5""
     $config_cmd CC="$4" CXX="$5" >conf.txt
