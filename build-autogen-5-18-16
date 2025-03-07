@@ -246,14 +246,18 @@ build_autogen ()
   popd >/dev/null
 
   # We need mktemp from coreutils
-  tar xf $1/coreutils-9.6.tar.gz
+  core_utils_vers=9.6
+  if [ $7 -lt 10 ]; then
+    core_utils_vers=8.32
+  fi
+  tar xf $1/coreutils-$core_utils_vers.tar.gz
   mkdir  -p "coreutils-bld"
   pushd "coreutils-bld" >/dev/null
   no_y2038=
   if [ $8 -ne 0 ]; then
     no_y2038=--disable-year2038
   fi
-  config_cmd="../coreutils-9.6/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- $nls $iconvpfx $no_y2038"
+  config_cmd="../coreutils-$core_utils_vers/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- $nls $iconvpfx $no_y2038"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -279,10 +283,15 @@ build_autogen ()
   popd >/dev/null
 
   # We need guile
-  tar xf $1/guile-2.2.7p.tar.gz
+  guile_vers=2.2.7-p
+  case $3 in
+    powerpc*) guile_vers=2.0.14;;
+    *);;
+  esac
+  tar xf $1/guile-$guile_vers.tar.gz
   mkdir  -p "guile-bld"
   pushd "guile-bld" >/dev/null
-  config_cmd="../guile-2.2.7-p/configure --prefix=$temp_build_path --build=$3 --disable-shared $ffi_include $ffi_lib LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules $nls $iconvpfx"
+  config_cmd="../guile-$guile_vers/configure --prefix=$temp_build_path --build=$3 --disable-shared $ffi_include $ffi_lib LDFLAGS=-Wl,-framework,CoreFoundation --disable-silent-rules $nls $iconvpfx"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
@@ -308,9 +317,9 @@ build_autogen ()
   tar xf $1/autogen-5.18.16p.tar.gz
   mkdir  -p "autogen-5-18-16"
   pushd "autogen-5-18-16" >/dev/null
-  config_cmd="../autogen-5.18.16-p/configure --prefix=$2 --build=$3 ac_cv_func_utimensat=no --disable-shared --disable-dependency-tracking $nls LDFLAGS=-Wl,-framework,CoreFoundation"
-  echo "configuring: $config_cmd CC=$4 CXX=$5"
-  $config_cmd CC="$4" CXX="$5" >conf.txt
+  config_cmd="../autogen-5.18.16-p/configure --prefix=$2 --build=$3 ac_cv_func_utimensat=no --disable-shared --disable-dependency-tracking --enable-static-autogen $nls LDFLAGS=-Wl,-framework,CoreFoundation "
+  echo "configuring: $config_cmd CC=$4 CXX=$5 CFLAGS="-g -O2 -fcommon""
+  $config_cmd CC="$4" CXX="$5" CFLAGS="-g -O2 -fcommon" >conf.txt
   if [ $? -ne 0 ]; then
     echo "autogen configure failed" >&2
     popd >/dev/null
