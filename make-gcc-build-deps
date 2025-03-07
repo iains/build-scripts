@@ -78,6 +78,10 @@ fi
 # Several configure scripts fail to pass -m32 (or any other -arch or -target
 # flag) to clang when the target is 32b so we need to roll our own
 
+if [ "X$arch" = "X" ]; then
+  arch=get_kernel_arch
+fi
+
 is32_bit=0
 case $arch in
   i?86 | powerpc | ppc) is32_bit=1 ;;
@@ -120,6 +124,9 @@ fi
 if [ $is32_bit -ne 0 ]; then
   cc="$cc -m32"
   cxx="$cxx -m32"
+else
+  cc="$cc -m64 "
+  cxx="$cxx -m64 "
 fi
 
 echo "Installing to : $prefix, using $cc as the compiler"
