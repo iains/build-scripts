@@ -247,17 +247,26 @@ build_autogen ()
 
   # We need mktemp from coreutils
   core_utils_vers=9.6
-  if [ $7 -lt 10 ]; then
-    core_utils_vers=8.32
-  fi
-  tar xf $1/coreutils-$core_utils_vers.tar.gz
-  mkdir  -p "coreutils-bld"
-  pushd "coreutils-bld" >/dev/null
+  gmp_prefix=--with-libgmp-prefix=$temp_build_path
   no_y2038=
   if [ $8 -ne 0 ]; then
     no_y2038=--disable-year2038
   fi
-  config_cmd="../coreutils-$core_utils_vers/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- $nls $iconvpfx $no_y2038"
+  if [ $7 -lt 10 ]; then
+     case $3 in
+      x86_64* | i686*)
+        core_utils_vers=8.32
+        # Not supported by 8.32
+        no_y2038=
+        gmp_prefix=--without-gmp
+        ;;
+      *);;
+     esac
+  fi
+  tar xf $1/coreutils-$core_utils_vers.tar.gz
+  mkdir  -p "coreutils-bld"
+  pushd "coreutils-bld" >/dev/null
+  config_cmd="../coreutils-$core_utils_vers/configure --prefix=$temp_build_path --build=$3 --program-prefix=gnu- $nls $iconvpfx $gmp_prefix $no_y2038"
   echo "configuring: $config_cmd CC=$4 CXX=$5"
   $config_cmd CC="$4" CXX="$5" >conf.txt
   if [ $? -ne 0 ]; then
