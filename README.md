@@ -75,27 +75,35 @@ TODO2; this is a completely inadequate description ..
 
 ## Testing of these scripts
 
-Note that Guile needs a C++11 compiler, and so Darwin <= 12 needs to use a more recent one that provided by XCode (I am currently using gcc-7-5).
+* gettext and guile needs C++11 compiler, and so Darwin <= 12 needs to use a more recent one than provided by XCode (the tests here used gcc-7-5).
+
+* Not able to build guile-2.2.7 with Rosetta (PowerPC) on Darwin9 or 10, however guile-2.0.14 does build and is sufficient.
+
+* Not able to build coreutils-9.6 for x86_64 on Darwin9 (it seems to use some unsupported insns unconditionally).  However coreutils-8.32 builds and is sufficient.
+
+* No available PowerPC h/w so no native tests or tests for powerpc64-apple-darwin9.
 
 Tested on:
 
 |   Darwin/macOS     | powerpc | i686 | x86_64 | aarch64 |
 | ------------------ | :-----: | :--: | :----: | :-----: |
-| 24 / Sequoia       |  N/A    | N/A  |  Yes   |         |
+| 24 / Sequoia       |  N/A    | N/A  |  Yes   |   ?     |
 | 23 / Sonoma        |  N/A    | N/A  |  Yes   |  Yes    |
-| 22 / Ventura       |  N/A    | N/A  |        |  Yes    |
+| 22 / Ventura       |  N/A    | N/A  |   ?    |  Yes    |
 | 21 / Monterey      |  N/A    | N/A  |  Yes   |  Yes    |
-| 20 / Big Sur       |  N/A    | N/A  |  Yes   |         |
+| 20 / Big Sur       |  N/A    | N/A  |  Yes   |   ?     |
 | 19 / Catalina      |  N/A    | N/A  |  Yes   |  N/A    |
 | 18 / Mojave        |  N/A    | N/A  |  Yes   |  N/A    |
 | 17 / High Sierra   |  N/A    | Yes  |  Yes   |  N/A    |
-| 16 / Sierra        |  N/A    |      |  Yes   |  N/A    |
-| 15 / El Capitan    |  N/A    |      |  Yes   |  N/A    |
+| 16 / Sierra        |  N/A    | Yes  |  Yes   |  N/A    |
+| 15 / El Capitan    |  N/A    | Yes  |  Yes   |  N/A    |
 | 14 / Yosemite      |  N/A    | Yes  |  Yes   |  N/A    |
 | 13 / Mavericks     |  N/A    | Yes  |  Yes   |  N/A    |
 | 12 / Mountain Lion |  N/A    | Yes  |  Yes   |  N/A    |
-| 11 / Lion          |  N/A    |      |        |  N/A    |
-| 10 / Snow Leopard  |         | Yes  |  Yes   |  N/A    |
-|  9 / Leopard       |         |      |        |  N/A    |
+| 11 / Lion          |  N/A    | Yes  |  Yes   |  N/A    |
+| 10 / Snow Leopard  | Yes(r1) | Yes  |  Yes   |  N/A    |
+|  9 / Leopard       | Yes(r1) | Yes  |  Yes   |  N/A    |
 |  8 / Tiger         |         |      |        |  N/A    |
 
+? = no hardware available here to test this version
+(r1) = Rosetta1.
