@@ -1,0 +1,6 @@
+# Identify the version of the scripts themselves.
+
+scripts_version()
+{
+  echo "0.9"
+}

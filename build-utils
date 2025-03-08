@@ -24,22 +24,52 @@ get_kernel_arch()
   echo "$karch"
 }
 
+get_build_arch()
+{
+  arch=`get_kernel_arch`
+  case $kernarch in
+    i386)
+       if [ $kernmaj -ge 10 -a $hw64b = 1 ];then
+         arch="x86_64"
+       else
+         arch="i686"
+       fi
+       ;;
+    *)
+       ;;
+  esac
+  echo "$arch"
+}
+
 # One, optional, parm - an override arch.
 get_build_triple()
 {
-  kernarch=`get_kernel_arch`
+  arch=`get_build_arch`
   darwinN=`get_darwin_vers`
 
   # allow for override of the arch.
-  arch=
   if [ $# -gt 0 ]; then
     arch=$1
     if [ $arch = "arm64" ]; then
       arch="aarch64"
     fi
-  else
-    arch=$kernarch
   fi
 
   echo "$arch-apple-$darwinN"
+}
+
+# Pick a job count; this will use all the cores on the older minis.
+get_job_count()
+{
+  num_jobs=`sysctl -n hw.activecpu`
+  # If we do not have many cores, use all of them - otherwise some heuristics
+  # to share resources...
+  if [ $num_jobs -gt 10 ]; then
+    # On the bigger machines, only use half the CPUs
+    num_jobs=`expr $num_jobs / 2`
+  elif [ $num_jobs -gt 6 ]; then
+    # otherwise, leave a little CPU for other work if there's enough
+    num_jobs=`expr $num_jobs - 2`
+  fi
+  echo "$num_jobs"
 }

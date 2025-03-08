@@ -1,21 +1,39 @@
 #! /bin/sh
 
-# Set up /opt/iains/<build>/gcc-build/{bin,scripts}
+# Set up $install/$build/gcc-build-tools/{bin,scripts}
 
 scripts=`dirname $0`
+
+. $scripts/paths
+. $scripts/scripts-version
+. $scripts/build-utils
+. $scripts/build-texinfo
+. $scripts/build-tcl
+. $scripts/build-darwin-expect
+. $scripts/build-dejagnu
+. $scripts/build-libiconv
+. $scripts/build-libunistring
+. $scripts/build-gettext
+. $scripts/build-gnu-m4-1-4-19
+. $scripts/build-autoconf-2-69
+. $scripts/build-automake-1-15-1
+. $scripts/build-gperf-3-1
+. $scripts/build-autogen-5-18-16
 
 oss_source=$scripts/archs
 
 print_help()
 {
   echo "`basename $0` [options]"
+  echo "  Installs into 'gcc-build-tools' at the chosen prefix."
   echo "options:"
-  echo " --prefix    : specify the prefix"
-  echo " --compiler  : specify the compiler"
-  echo " --arch      : specify a different arch from the kernel"
-  echo " --jobs/-j   : number of jobs for make and check."
-  echo " --force/-f  : continue on non-fatal error."
-  echo " --help/-h   : this output."
+  echo " --prefix     : specify prefix (default $install_path/<build-triple>)."
+  echo " --compiler   : specify the compiler"
+  echo " --arch       : specify a different arch from the kernel"
+  echo " --jobs/-j    : number of jobs for make and check."
+  echo " --force/-f   : continue on non-fatal error."
+  echo " --help/-h    : this output."
+  echo " --version/-v : scripts version."
 }
 
 arch=
@@ -49,38 +67,29 @@ do
       num_jobs=$2
       shift; shift
       ;;
+    -v | --version)
+      echo "scripts version: `scripts_version`"
+      shift
+      exit 0
+      ;;
     *)
       goon=0
       ;;
   esac
 done
 
-. $scripts/build-utils
-. $scripts/build-texinfo
-. $scripts/build-tcl
-. $scripts/build-darwin-expect
-. $scripts/build-dejagnu
-. $scripts/build-libiconv
-. $scripts/build-libunistring
-. $scripts/build-gettext
-. $scripts/build-gnu-m4-1-4-19
-. $scripts/build-autoconf-2-69
-. $scripts/build-automake-1-15-1
-. $scripts/build-gperf-3-1
-. $scripts/build-autogen-5-18-16
+if [ "X$arch" = "X" ]; then
+  arch=`get_kernel_arch`
+fi
 
 build=`get_build_triple $arch`
 
 if [ "X$prefix" = "X" ]; then
-  prefix="/opt/iains/$build/gcc-build-tools"
+  prefix="$install_path/$build/gcc-build-tools"
 fi
 
 # Several configure scripts fail to pass -m32 (or any other -arch or -target
 # flag) to clang when the target is 32b so we need to roll our own
-
-if [ "X$arch" = "X" ]; then
-  arch=get_kernel_arch
-fi
 
 is32_bit=0
 case $arch in
@@ -136,14 +145,7 @@ export PKG_CONFIG_PATH=$prefix/lib/pkgconfig
 # set the job count, if not specified.  This will use all the cores on the
 # older minis.
 if [ "X$num_jobs" = "X" ]; then
-  num_jobs=`sysctl -n hw.activecpu`
-  if [ $num_jobs -gt 10 ]; then
-    # On the servers, only use half the CPUs
-    num_jobs=`expr $num_jobs / 2`
-  elif [ $num_jobs -gt 6 ]; then
-    # otherwise, leave a little CPU for other work if there's enough
-    num_jobs=`expr $num_jobs - 2`
-  fi
+  num_jobs=`get_job_count`
 fi
 
 # iconv is needed from Sonoma ... but just keep the recipe consistent.

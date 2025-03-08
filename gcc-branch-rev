@@ -1,51 +1,29 @@
 #! /bin/sh
 
-# figure out the build machine.
-kernarch=`uname -m`
+scripts=`dirname $0`
+
+. $scripts/paths
+. $scripts/scripts-version
+. $scripts/build-utils
+. $scripts/find-a-git
+
 kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
-kernname=`uname -s`
-kernrev=`uname -r`
-darwin=`echo $kernname$kernmaj | tr '[:upper:]' '[:lower:]'`
 hw64b=`sysctl -n hw.cpu64bit_capable`
 
-arch=$kernarch
-case $kernarch in
-  arm64)
-     arch="aarch64"
-     ;;
-  i386)
-     if [ $kernmaj -ge 10 -a $hw64b = 1 ];then
-       arch="x86_64"
-     else
-       arch="i686"
-     fi
-     ;;
-  *)
-     ;;
-esac
-
-build=`echo $arch-apple-$darwin`
+# figure out the build machine.
+arch=`get_build_arch`
+build=`get_build_triple`
 echo "build system is $build"
 
 # Find a usable git.
-if [ -x /opt/iains/$build/gcc-7-5-toolchain/bin/git ];then
-  # We have a toolchain for this OS version.
-  tcgit=/opt/iains/$build/gcc-7-5-toolchain/bin/git
-elif [ -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ];then
-  # We can use the Darwin19 one, for now.
-  tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
-fi
-
-# Let the environment override the git to be used; fall back to whatever we
-# find in PATH if there's no toolchain version available.
-git=${GIT-${tcgit-git}}
+git=`find_usable_git $build $kernmaj`
 
 gv=`$git --version`
 if [ $? -ne 0 ];then
  echo "cannot execute $git" >&2
  exit 1
 fi
-echo "using git : $git [version $gv]"
+#echo "using git : $git [version $gv]"
 
 #branch=`git name-rev --name-only HEAD || :`
 branch=`$git rev-parse --abbrev-ref HEAD`

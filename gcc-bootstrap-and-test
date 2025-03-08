@@ -2,7 +2,10 @@
 
 scripts=`dirname $0`
 
+. $scripts/paths
+. $scripts/scripts-version
 . $scripts/build-utils
+. $scripts/find-a-git
 
 langlist="all"
 sysroot=
@@ -15,16 +18,21 @@ reponame=
 branchname=
 arch=
 install=0
+pch=0
 
 print_help()
 {
-  echo "`basename $0` [options] [gcc-version [bootstrap]]"
+  echo "`basename $0` [options] [gcc-version [bootstrap compiler]]"
+  echo "  gcc-version is either 'master'/'trunk' or a major release number (default 'master')"
+  echo "  If a branch is not specified and different branch (to the one implied"
+  echo "  by gcc-version) is checked out in the relevant source directory the script will halt."
+  echo "  If no bootstrap compiler is specified, the script will try to figure it out."
   echo "options:"
   echo " --update/-u  : update the source tree before starting (stop if unchanged)."
-  echo " --repo       : repository path (default /src-local/gcc-git-major)."
-  echo " --branch     : repository branch (default releases/gcc-major or master)."
-  echo " --blddir     : build directory (default /scratch/OS-ver[rosetta]/gcc-major)."
-  echo " --prefix     : specify prefix (default /opt/iains/<triple>/gcc-<base-ver>)."
+  echo " --repo       : repository path (default $src_local_path/<gcc-master,gcc-git-major>)."
+  echo " --branch     : repository branch (default 'master' or 'releases/gcc-major')."
+  echo " --blddir     : build directory (default $scratch_path/OS-ver[rosetta]/<gcc-master or gcc-major>)."
+  echo " --prefix     : specify prefix (default $install_path/$build/gcc-<base-ver>)."
   echo " --langs      : specify comma-separated list of languages to build (default = all)."
   echo " --sysroot    : specify sysroot (default depends on OS version)."
   echo " --config     : supply extra configure parms (e.g. cpu, tune etc)."
@@ -33,7 +41,9 @@ print_help()
   echo " --jobs/-j    : number of jobs for make and check."
   echo " --force/-f   : continue on non-fatal error."
   echo " --install/-i : install the compiler before testing."
+  echo " --pch        : build libstdc++ PCH (default = no)."
   echo " --help/-h    : this output."
+  echo " --version/-v : script version."
 }
 
 goon=1
@@ -99,6 +109,15 @@ do
       install=1
       shift
       ;;
+    --pch)
+      pch=1
+      shift
+      ;;
+    -v | --version)
+      echo "scripts version: `scripts_version`"
+      shift
+      exit 0
+      ;;
     *)
       goon=0
       ;;
@@ -140,11 +159,11 @@ karch=`uname -m`
 kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
 hw64b=`sysctl -n hw.cpu64bit_capable`
 
-build=`get_build_triple $arch`
-
 if [ "X$arch" = "X" ]; then
   arch=`get_kernel_arch`
 fi
+
+build=`get_build_triple $arch`
 
 is32b=0
 if [ $arch = "i686" -o $arch = "powerpc" ]; then
@@ -160,10 +179,10 @@ else
 fi
 
 if [ "X$reponame" = "X" ]; then
-  if [ $version = "master" -o $version = "trunk" ]; then
-    reponame="/src-local/gcc-master"
+  if [ $version = "master" -o $version = "trunk" -o $version = "main" ]; then
+    reponame="$src_local_path/gcc-master"
   else
-    reponame="/src-local/gcc-git-$version"
+    reponame="$src_local_path/gcc-git-$version"
   fi
 fi
 
@@ -177,25 +196,14 @@ if [ ! -d $reponame/.git -a ! -f $reponame/.git ]; then
   exit 1
 fi
 
-# Fall back to whatever git we can find in path.
-if [ -x /opt/iains/$build/gcc-7-5-toolchain/bin/git ];then
-  # We have a toolchain for this OS version.
-  tcgit=/opt/iains/$build/gcc-7-5-toolchain/bin/git
-elif [ -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ];then
-  # We can use the Darwin19 one, for now.
-  tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
-fi
-
-# Let the environment override the git to be used; fall back to whatever we
-# find in PATH if there's no toolchain version available.
-git=${GIT-${tcgit-git}}
+git=`find_usable_git $build $kernmaj`
 
 gv=`$git --version`
 if [ $? -ne 0 ];then
  echo "cannot execute $git" >&2
  exit 1
 fi
-echo "using git : $git [version $gv]"
+#echo "using git : $git [version $gv]"
 
 # See if we should do rNN-MMMM or branchname-MMM
 use_branchname=0
@@ -334,7 +342,7 @@ fi
 basever=`cat $reponame/gcc/BASE-VER | sed -e 's/\./-/g'`
 gccmaj=`echo $basever | sed -e 's/-.*//'`
 if [ "X$prefix" = "X" ]; then
-  prefix="/opt/iains/$build/gcc-$basever"
+  prefix="$install_path/$build/gcc-$basever"
 fi
 
 # If we are building D and the OS version is 11 or less then we
@@ -347,25 +355,25 @@ fi
 
 if [ "X$blddir" = "X" ]; then
   case $kernmaj in
-     8) b="/scratch/10-4-tig";;
-     9) b="/scratch/10-5-leo$rosetta";;
-    10) b="/scratch/10-6-sno$rosetta";;
-    11) b="/scratch/10-7-lion";;
-    12) b="/scratch/10-8-ml";;
-    13) b="/scratch/10-9-mav";;
-    14) b="/scratch/10-10-yos";;
-    15) b="/scratch/10-11-elcap";;
-    16) b="/scratch/10-12-sie";;
-    17) b="/scratch/10-13-his";;
-    18) b="/scratch/10-14-moj";;
-    19) b="/scratch/10-15-cat";;
-    20) b="/scratch/11-sur$rosetta";;
-    21) b="/scratch/12-mon$rosetta";;
-    22) b="/scratch/13-ven$rosetta";;
-    23) b="/scratch/14-son$rosetta";;
-    24) b="/scratch/15-seq$rosetta";;
+     8) b="$scratch_path/10-4-tig";;
+     9) b="$scratch_path/10-5-leo$rosetta";;
+    10) b="$scratch_path/10-6-sno$rosetta";;
+    11) b="$scratch_path/10-7-lion";;
+    12) b="$scratch_path/10-8-ml";;
+    13) b="$scratch_path/10-9-mav";;
+    14) b="$scratch_path/10-10-yos";;
+    15) b="$scratch_path/10-11-elcap";;
+    16) b="$scratch_path/10-12-sie";;
+    17) b="$scratch_path/10-13-his";;
+    18) b="$scratch_path/10-14-moj";;
+    19) b="$scratch_path/10-15-cat";;
+    20) b="$scratch_path/11-sur$rosetta";;
+    21) b="$scratch_path/12-mon$rosetta";;
+    22) b="$scratch_path/13-ven$rosetta";;
+    23) b="$scratch_path/14-son$rosetta";;
+    24) b="$scratch_path/15-seq$rosetta";;
   esac
-  if [ $version = "master" -o $version = "trunk" ]; then
+  if [ $version = "master" -o $version = "trunk" -o $version = "main" ]; then
     blddir="$b/gcc-master"
   else
     blddir="$b/gcc-$gccmaj"
@@ -406,7 +414,12 @@ if [ $sysroot != "/" ]; then
   sysroot_opt="--with-sysroot=$sysroot"
 fi
 
-configCMD="$reponame/configure --prefix=$prefix --build=$build $sysroot_opt $add_libphobos --disable-libstdcxx-pch $host_shared --enable-languages=$langlist $extra_config CC=$cc CXX=$cxx"
+build_pch=
+if [ $pch -eq 0 ]; then
+  build_pch="--disable-libstdcxx-pch"
+fi
+
+configCMD="$reponame/configure --prefix=$prefix --build=$build $sysroot_opt $add_libphobos $build_pch $host_shared --enable-languages=$langlist $extra_config CC=$cc CXX=$cxx"
 
 echo "`date -u \"+%y%m%d-%H%M : \"`configuring with : $configCMD"
 echo "`date -u \"+%y%m%d-%H%M : \"`configuring with : $configCMD" >config_stats.txt
@@ -421,14 +434,7 @@ fi
 # set the job count, if not specified.  This will use all the cores on the
 # older minis.
 if [ "X$num_jobs" = "X" ]; then
-  num_jobs=`sysctl -n hw.activecpu`
-  if [ $num_jobs -gt 10 ]; then
-    # On the servers, only use half the CPUs
-    num_jobs=`expr $num_jobs / 2`
-  elif [ $num_jobs -gt 6 ]; then
-    # otherwise, leave a little CPU for other work if there's enough
-    num_jobs=`expr $num_jobs - 2`
-  fi
+  num_jobs=`get_job_count`
 fi
 
 buildCMD="make -j$num_jobs STAGE1_CFLAGS='-O -pipe' STAGE1_CXXFLAGS='-O -pipe'"
@@ -461,8 +467,9 @@ testCMD="make -j$num_jobs -k check"
 echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD"
 echo "`date -u \"+%y%m%d-%H%M : \"`testing with : $testCMD" >test_stats.txt
 /usr/bin/time -l nice sh -c "$testCMD >tst.txt 2>&1" 2>>test_stats.txt
+
 echo "`date -u \"+%y%m%d-%H%M : \"`testing finished, writing the summary"
-/src-local/build-scripts/test-summary >summ.txt
+$scripts/test-summary >summ.txt
 
 #echo "src : $reponame build $build$rosetta bootstrap $bootstrap"
 #echo "langs : $langlist has D $hasD add_libphobos $add_libphobos"

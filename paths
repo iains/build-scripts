@@ -1,0 +1,18 @@
+
+# set up root paths for where we want to install, where sources are, where we
+# want the test results to be put etc.
+
+# src_local is where we expect to find checkouts of GCC branches.
+# We expect  those to be named `gcc-master` and `gcc-git-<major>` for release
+# branches.
+
+src_local_path="/src-local"
+
+# scratch is the root of where we build the compilers.
+
+scratch_path="/scratch"
+
+# install is the root of the prefix(es) for the compilers - this needs to be
+# writable by the user running the scripts.
+
+install_path="/opt/iains"

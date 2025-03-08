@@ -1,0 +1,32 @@
+# Args : build-triple, os_version
+
+# We prefer a common (more modern than on older macOS) version of git, that has
+# been built locally.  However, fall back to whatever is available in $PATH
+
+# We did not build gcc-7-5-toolchains for > Darwin19 (macOS Catalina) but the
+# tools are useable on both x86_64 and aarch64 (under rosetta2) 
+
+find_usable_git ()
+{
+  try_x86_64=0
+  case $1 in
+    i686*)
+      try_x86_64=1
+      alt_build=`echo $build | sed s/i686/x86_64/` 
+      ;;
+    *);;
+  esac
+  if [ -x /opt/iains/$1/gcc-7-5-toolchain/bin/git ];then
+    # We have a toolchain for this OS version.
+    tcgit=/opt/iains/$1/gcc-7-5-toolchain/bin/git
+  elif [ $try_x86_64 -ne 0 -a -x /opt/iains/$alt_build/gcc-7-5-toolchain/bin/git ]; then
+    # We could have an x86_64 version for this build, which is fine.
+    tcgit=/opt/iains/$alt_build/gcc-7-5-toolchain/bin/git
+  elif [ $2 -gt 18 -a -x /opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git ]; then
+    # We can use the Darwin19 one, for now.
+    tcgit=/opt/iains/x86_64-apple-darwin19/gcc-7-5-toolchain/bin/git
+  fi
+  # Let the environment override the git to be used.
+  git=${GIT-${tcgit-git}}
+  echo "$git"
+}
