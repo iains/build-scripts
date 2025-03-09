@@ -73,7 +73,8 @@ do
       exit 0
       ;;
     *)
-      goon=0
+      echo "error: option $1 is not valid"
+      exit 0
       ;;
   esac
 done

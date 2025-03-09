@@ -17,6 +17,17 @@ do_bunsen=0
 jfdi=0
 tagid=
 
+print_help()
+{
+  echo "`basename $0` [options]"
+  echo "  Adds the test data to a history branch in a repository."
+  echo "options:"
+  echo " --tagid    : specify the tag ID for this build"
+  echo " --force/-f : re-send / force sending to a second repo"
+  echo " --help/-h    : this output."
+  echo " --version/-v : script version."
+}
+
 while [ $# -gt 0 ]
 do
   case $1 in
@@ -28,8 +39,15 @@ do
        shift
        ;;
     --help | -h)
-      echo "$0 --force/-f : re-send / force sending to a second repo"
-      echo "$0 --tagid    : specify the tag ID for this build"
+      print_help
+      exit 0
+      ;;
+    -v | --version)
+      echo "scripts version: `scripts_version`"
+      exit 0
+      ;;
+    *)
+      echo "error: option $1 is not valid"
       exit 0
       ;;
   esac

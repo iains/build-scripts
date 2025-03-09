@@ -7,6 +7,33 @@ scripts=`dirname $0`
 . $scripts/build-utils
 . $scripts/find-a-git
 
+print_help()
+{
+  echo "`basename $0` [options]"
+  echo "  Updates the branch metadata (but does not update the branch)."
+  echo " --help/-h    : this output."
+  echo " --version/-v : script version."
+}
+
+goon=1
+while [ $goon -eq 1 -a $# -gt 0 ]
+do
+  case $1 in
+    --help | -h)
+      print_help
+      exit 0
+      ;;
+    -v | --version)
+      echo "scripts version: `scripts_version`"
+      exit 0
+      ;;
+    *)
+      echo "error: option $1 is not valid"
+      exit 0
+      ;;
+  esac
+done
+
 kernmaj=`uname -r | sed -e 's,\.[0-9.]*,,'`
 hw64b=`sysctl -n hw.cpu64bit_capable`
 
