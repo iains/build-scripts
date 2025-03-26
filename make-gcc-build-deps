@@ -207,6 +207,10 @@ install_m4
 if [ $? -ne 0 ]; then
   exit 1
 fi
+# We need to have gm4 for most Darwin configures.
+pushd $prefix/bin >/dev/null
+ln -sf m4 gm4
+popd >/dev/null
 
 # autoconf-2.69
 configure_autoconf $oss_source $prefix $build "$cc" "$cxx"
