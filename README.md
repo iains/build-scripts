@@ -4,7 +4,8 @@ This contains a number of scripts that support GCC build and test on macOS.
 
 Changelog.
 
-0.9 : March 2025 : Initial public branch
+0.9.0 : March 2025 : Initial public branch
+0.9.1 : March 2025 : Added flex 2.6.4 and bison 3.7.6 to support cobol.
 
 
 ## 1 Background
