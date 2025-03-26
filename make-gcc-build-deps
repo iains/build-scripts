@@ -20,6 +20,7 @@ scripts=`dirname $0`
 . $scripts/build-gperf-3-1
 . $scripts/build-help2man
 . $scripts/build-flex
+. $scripts/build-bison
 . $scripts/build-autogen-5-18-16
 
 oss_source=$scripts/archs
@@ -329,6 +330,20 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 install_flex
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# bison - needed by COBOL
+configure_bison $oss_source $prefix $build "$cc" "$cxx"
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_bison $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_bison
 if [ $? -ne 0 ]; then
   exit 1
 fi

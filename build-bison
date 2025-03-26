@@ -1,0 +1,72 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_bison()
+{
+  if [ $# -lt 2 ]; then
+    echo "do_build_textinfo() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/bison-3.7.6.tar.gz
+  if [ $? -ne 0 ];then
+   echo "bison source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "bison-bld"
+  pushd "bison-bld" >/dev/null
+  config_cmd="../bison-3.7.6/configure --prefix=$2"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 5 ]; then
+    echo "configuring: $config_cmd CC="$4" CXX="$5""
+    $config_cmd CC="$4" CXX="$5" >conf.txt
+  elif [ $# -ge 4 ]; then
+    echo "configuring: $config_cmd CC="$4""
+    $config_cmd CC="$4" >conf.txt
+  else
+    echo "configuring: $config_cmd "
+    $config_cmd >conf.txt
+  fi 
+  if [ $? -ne 0 ]; then
+    echo "bison configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_bison()
+{
+  pushd "bison-bld" >/dev/null
+  bison_make_extra=
+  if [ $# -ge 1 ]; then
+    bison_make_extra="-j $1"
+  fi
+  echo "building : make $bison_make_extra"
+  make $bison_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "bison build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_bison()
+{
+  pushd "bison-bld" >/dev/null
+  echo "installing bison"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "bison install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
