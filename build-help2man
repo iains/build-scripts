@@ -1,0 +1,71 @@
+
+configure_help2man()
+{
+  if [ $# -lt 2 ]; then
+    echo "do_build_textinfo() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/help2man-1.49.3.tar.gz
+  if [ $? -ne 0 ];then
+   echo "help2man source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "help2man-bld"
+  pushd "help2man-bld" >/dev/null
+  config_cmd="../help2man-1.49.3/configure --prefix=$2 "
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 5 ]; then
+    echo "configuring: $config_cmd CC="$4" CXX="$5""
+    $config_cmd CC="$4" CXX="$5" >conf.txt
+  elif [ $# -ge 4 ]; then
+    echo "configuring: $config_cmd CC="$4""
+    $config_cmd CC="$4" >conf.txt
+  else
+    echo "configuring: $config_cmd "
+    $config_cmd >conf.txt
+  fi 
+  if [ $? -ne 0 ]; then
+    echo "help2man configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_help2man()
+{
+  pushd "help2man-bld" >/dev/null
+  help2man_make_extra=
+  if [ $# -ge 1 ]; then
+    help2man_make_extra="-j $1"
+  fi
+  echo "building : make $help2man_make_extra"
+  make $help2man_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "help2man build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_help2man()
+{
+  pushd "help2man-bld" >/dev/null
+  echo "installing help2man"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "help2man install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+

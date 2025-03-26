@@ -1,0 +1,72 @@
+# Args : sources_dir, prefix, build-triple, CC, CXX
+
+configure_flex()
+{
+  if [ $# -lt 2 ]; then
+    echo "do_build_textinfo() : missing source or prefix." >&2
+    return 2
+  fi
+
+  tar xf $1/flex-2.6.4.tar.gz
+  if [ $? -ne 0 ];then
+   echo "flex source extraction failed" >&2
+   return 2
+  fi
+  mkdir -p "flex-bld"
+  pushd "flex-bld" >/dev/null
+  config_cmd="../flex-2.6.4/configure --prefix=$2 --disable-shared"
+  if [ $# -ge 3 ]; then
+    config_cmd="$config_cmd --build=$3"
+  fi 
+  if [ $# -ge 5 ]; then
+    echo "configuring: $config_cmd CC="$4" CXX="$5""
+    $config_cmd CC="$4" CXX="$5" >conf.txt
+  elif [ $# -ge 4 ]; then
+    echo "configuring: $config_cmd CC="$4""
+    $config_cmd CC="$4" >conf.txt
+  else
+    echo "configuring: $config_cmd "
+    $config_cmd >conf.txt
+  fi 
+  if [ $? -ne 0 ]; then
+    echo "flex configure failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+# Args : Number of jobs
+build_flex()
+{
+  pushd "flex-bld" >/dev/null
+  flex_make_extra=
+  if [ $# -ge 1 ]; then
+    flex_make_extra="-j $1"
+  fi
+  echo "building : make $flex_make_extra"
+  make $flex_make_extra >bld.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "flex build failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+
+install_flex()
+{
+  pushd "flex-bld" >/dev/null
+  echo "installing flex"
+  make install >ins.txt 2>&1
+  if [ $? -ne 0 ];then
+    echo "flex install failed" >&2
+    popd >/dev/null
+   return 2
+  fi
+  popd >/dev/null
+  return 0
+}
+

@@ -18,6 +18,8 @@ scripts=`dirname $0`
 . $scripts/build-autoconf-2-69
 . $scripts/build-automake-1-15-1
 . $scripts/build-gperf-3-1
+. $scripts/build-help2man
+. $scripts/build-flex
 . $scripts/build-autogen-5-18-16
 
 oss_source=$scripts/archs
@@ -299,6 +301,34 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 install_dejagnu
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# help2man, needed by Flex
+configure_help2man $oss_source $prefix $build "$cc" "$cxx"
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_help2man $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_help2man
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+# flex - needed by COBOL
+configure_flex $oss_source $prefix $build "$cc" "$cxx"
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+build_flex $num_jobs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+install_flex
 if [ $? -ne 0 ]; then
   exit 1
 fi
