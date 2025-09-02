@@ -11,7 +11,7 @@ if [info exists env(SCRIPTS_DIR)] {
 }
 
 global boards_dir
-set boards_dir "$scripts_dir/dejagnu-boards"
+set boards_dir "$scripts_dir/../dejagnu-boards"
 
 case "$target_triplet" in {
    { "i?86-*-solaris2.1[0-9]" } {
