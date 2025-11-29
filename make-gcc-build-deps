@@ -3,6 +3,7 @@
 # Set up $install/$build/gcc-build-tools/{bin,scripts}
 
 scripts=`dirname $0`
+scripts=`realpath $scripts`
 
 . $scripts/paths
 . $scripts/scripts-version

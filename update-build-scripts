@@ -63,7 +63,7 @@ echo "Installing to : $prefix"
 
 script_list="gcc-bootstrap-and-test paths scripts-version find-a-git \
 gcc-branch-rev gcc-save-test gcc-update-test build-utils ramdisk \
-print-install-dir test-summary gcc-autoreconf.sh"
+print-install-dir test-summary gcc-autoreconf.sh compare_tests"
 
 if [ ! -d $prefix/bin ]; then
   echo "warning: no binary tools installed yet" >&2

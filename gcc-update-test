@@ -237,7 +237,7 @@ fi
 # First see if we can figure out regressions.
 for s in gcc g++ fortran objc obj-c++ gnat gdc gm2 cobol; do
   if [ -f gcc/testsuite/$s/$s.sum -a -f $staging/gcc/testsuite/$s/$s.sum ]; then
-    $srcdir/contrib/compare_tests $staging/gcc/testsuite/$s/$s.sum gcc/testsuite/$s/$s.sum > test-$s.diff
+    compare_tests -new-name-dups $staging/gcc/testsuite/$s/$s.sum gcc/testsuite/$s/$s.sum > test-$s.diff
     # If this fails - notify.
     if [ $? != 0 ]; then
       echo "Changes seen in $s tests" >&2
@@ -245,7 +245,7 @@ for s in gcc g++ fortran objc obj-c++ gnat gdc gm2 cobol; do
   fi
 done
 if [ -f gcc/testsuite/ada/acats/acats.sum -a -f $staging/gcc/testsuite/ada/acats/acats.sum ]; then
-  $srcdir/contrib/compare_tests $staging/gcc/testsuite/ada/acats/acats.sum gcc/testsuite/ada/acats/acats.sum > test-acats.diff
+  compare_tests -new-name-dups $staging/gcc/testsuite/ada/acats/acats.sum gcc/testsuite/ada/acats/acats.sum > test-acats.diff
   # If this fails - notify.
   if [ $? != 0 ]; then
     echo "Changes seen in Acats tests" >&2
@@ -253,7 +253,7 @@ if [ -f gcc/testsuite/ada/acats/acats.sum -a -f $staging/gcc/testsuite/ada/acats
 fi
 for l in libatomic libstdc++-v3 libphobos libitm libgomp; do
   if [ -f $target/$l/testsuite/$l.sum -a -f $staging/$target/$l/testsuite/$l.sum ]; then
-    $srcdir/contrib/compare_tests $staging/$target/$l/testsuite/$l.sum $target/$l/testsuite/$l.sum > test-$l.diff
+    compare_tests -new-name-dups $staging/$target/$l/testsuite/$l.sum $target/$l/testsuite/$l.sum > test-$l.diff
     # If this fails - notify.
     if [ $? != 0 ]; then
       echo "Changes seen in $l tests" >&2
