@@ -235,7 +235,7 @@ if [ ! -d $staging ]; then
 fi
 
 # First see if we can figure out regressions.
-for s in gcc g++ fortran objc obj-c++ gnat gdc gm2 cobol; do
+for s in gcc g++ fortran objc obj-c++ gnat gdc gm2 cobol algol68; do
   if [ -f gcc/testsuite/$s/$s.sum -a -f $staging/gcc/testsuite/$s/$s.sum ]; then
     compare_tests -new-name-dups $staging/gcc/testsuite/$s/$s.sum gcc/testsuite/$s/$s.sum > test-$s.diff
     # If this fails - notify.
