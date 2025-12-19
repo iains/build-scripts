@@ -251,7 +251,7 @@ if [ -f gcc/testsuite/ada/acats/acats.sum -a -f $staging/gcc/testsuite/ada/acats
     echo "Changes seen in Acats tests" >&2
   fi
 fi
-for l in libatomic libstdc++-v3 libphobos libitm libgomp; do
+for l in libatomic libphobos libitm libgomp; do
   if [ -f $target/$l/testsuite/$l.sum -a -f $staging/$target/$l/testsuite/$l.sum ]; then
     compare_tests -new-name-dups $staging/$target/$l/testsuite/$l.sum $target/$l/testsuite/$l.sum > test-$l.diff
     # If this fails - notify.
@@ -260,7 +260,15 @@ for l in libatomic libstdc++-v3 libphobos libitm libgomp; do
     fi
   fi
 done
-
+# Have to do this specially, since the test output is not named the same as the
+# library directory.
+if [ -f $target/libstdc++-v3/testsuite/libstdc++.sum -a -f $staging/$target/libstdc++-v3/testsuite/libstdc++.sum ]; then
+  compare_tests -new-name-dups $staging/$target/libstdc++-v3/testsuite/libstdc++.sum $target/libstdc++-v3/testsuite/libstdc++.sum > test-libstdc++.diff
+  # If this fails - notify.
+  if [ $? != 0 ]; then
+    echo "Changes seen in libstdc++ tests" >&2
+  fi
+fi
 # Remove the last data...
 rm -r $staging/* $staging/.bunsen*
 
