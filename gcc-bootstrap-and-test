@@ -372,6 +372,7 @@ if [ "X$blddir" = "X" ]; then
     22) b="$scratch_path/13-ven$rosetta";;
     23) b="$scratch_path/14-son$rosetta";;
     24) b="$scratch_path/15-seq$rosetta";;
+    25) b="$scratch_path/26-tah$rosetta";;
   esac
   if [ $version = "master" -o $version = "trunk" -o $version = "main" ]; then
     blddir="$b/gcc-master"

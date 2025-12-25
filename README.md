@@ -220,6 +220,7 @@ $rosetta is attached to the path if the GCC build script figures out that you ar
 
 |   Darwin/macOS     | OS build directory |
 | ------------------ | :----------------- |
+| 25 / Tahoe         | $scratch_path/26-tah$rosetta |
 | 24 / Sequoia       | $scratch_path/15-seq$rosetta |
 | 23 / Sonoma        | $scratch_path/14-son$rosetta |
 | 22 / Ventura       | $scratch_path/13-ven$rosetta |
